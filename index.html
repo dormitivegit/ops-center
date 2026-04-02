@@ -1,0 +1,2148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>运营作战中枢</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --bg2: #0f1218;
+    --bg3: #161b24;
+    --border: #1e2633;
+    --border2: #263040;
+    --accent: #00d4aa;
+    --accent2: #0066ff;
+    --accent3: #ff6b35;
+    --text: #e2e8f0;
+    --text2: #8899aa;
+    --text3: #4a5568;
+    --success: #00d4aa;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --purple: #a78bfa;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Noto Sans SC', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* 顶栏 */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .date-chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* 主布局 */
+  .layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    min-height: calc(100vh - 52px);
+  }
+
+  /* 侧边栏 */
+  .sidebar {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+  }
+
+  .nav-section {
+    padding: 0 12px;
+    margin-bottom: 8px;
+  }
+
+  .nav-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0 8px;
+    margin-bottom: 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 13px;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+
+  .nav-item:hover {
+    background: var(--bg3);
+    color: var(--text);
+  }
+
+  .nav-item.active {
+    background: rgba(0, 212, 170, 0.08);
+    color: var(--accent);
+    border-color: rgba(0, 212, 170, 0.15);
+  }
+
+  .nav-icon {
+    font-size: 14px;
+    width: 18px;
+    text-align: center;
+  }
+
+  .nav-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 12px 12px;
+  }
+
+  /* 内容区 */
+  .content {
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* 页面标题 */
+  .page-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .page-sub {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-top: 2px;
+  }
+
+  /* 卡片 */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    font-family: var(--mono);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 12px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* 网格 */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* 输入 */
+  textarea, input[type="text"], input[type="number"], select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+    resize: vertical;
+  }
+
+  textarea:focus, input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.08);
+  }
+
+  textarea { min-height: 140px; line-height: 1.7; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 6px;
+    font-family: var(--mono);
+  }
+
+  .form-group { margin-bottom: 16px; }
+
+  /* 按钮 */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    font-weight: 500;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0c10;
+  }
+
+  .btn-primary:hover { background: #00bfa0; transform: translateY(-1px); }
+
+  .btn-secondary {
+    background: var(--bg3);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-danger {
+    background: rgba(239,68,68,0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+
+  .btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  /* 任务列表 */
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    background: var(--bg);
+    transition: border-color 0.15s;
+  }
+
+  .task-item:hover { border-color: var(--border2); }
+
+  .task-item.done {
+    opacity: 0.5;
+    border-color: rgba(0,212,170,0.15);
+  }
+
+  .task-item.done .task-text { text-decoration: line-through; }
+
+  .task-check {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border2);
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+    transition: all 0.15s;
+  }
+
+  .task-check.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0c10;
+    font-size: 11px;
+  }
+
+  .task-text { flex: 1; font-size: 13px; }
+
+  .task-tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    flex-shrink: 0;
+  }
+
+  .tag-p1 { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .tag-p2 { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .tag-p3 { background: rgba(0,212,170,0.1); color: var(--accent); }
+
+  /* 数据指标 */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .metric-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .metric-value {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--text);
+  }
+
+  .metric-value.good { color: var(--success); }
+  .metric-value.warn { color: var(--warn); }
+  .metric-value.bad { color: var(--danger); }
+
+  .metric-delta {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  /* 进度条 */
+  .progress-bar {
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.5s ease;
+  }
+
+  .progress-fill.warn { background: var(--warn); }
+  .progress-fill.danger { background: var(--danger); }
+
+  /* 总结输出区 */
+  .summary-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text2);
+    min-height: 120px;
+    position: relative;
+  }
+
+  .summary-block.has-content { color: var(--text); }
+
+  .summary-placeholder {
+    color: var(--text3);
+    font-style: italic;
+    font-size: 12px;
+  }
+
+  /* 标签切换 */
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .tab {
+    padding: 8px 16px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text2);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+    font-family: var(--mono);
+  }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* 徽章 */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: var(--mono);
+    font-weight: 500;
+  }
+
+  .badge-green { background: rgba(0,212,170,0.12); color: var(--accent); }
+  .badge-yellow { background: rgba(245,158,11,0.12); color: var(--warn); }
+  .badge-red { background: rgba(239,68,68,0.12); color: var(--danger); }
+  .badge-blue { background: rgba(0,102,255,0.12); color: var(--accent2); }
+  .badge-purple { background: rgba(167,139,250,0.12); color: var(--purple); }
+
+  /* 分割线 */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  /* 历史记录 */
+  .history-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg3);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+
+  .history-header:hover { background: var(--bg2); }
+
+  .history-date {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .history-title {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .history-body {
+    display: none;
+    padding: 16px;
+    background: var(--bg2);
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text2);
+    white-space: pre-wrap;
+  }
+
+  .history-body.open { display: block; }
+
+  /* 周计划卡片 */
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+  }
+
+  .day-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 8px;
+    min-height: 80px;
+  }
+
+  .day-card.today {
+    border-color: var(--accent);
+    background: rgba(0,212,170,0.05);
+  }
+
+  .day-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
+  .day-card.today .day-label { color: var(--accent); }
+
+  .day-task {
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.5;
+    margin-bottom: 3px;
+  }
+
+  /* AI输出区 */
+  .ai-output {
+    background: linear-gradient(135deg, rgba(0,212,170,0.03), rgba(0,102,255,0.03));
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text);
+    position: relative;
+  }
+
+  .ai-output::before {
+    content: 'AI OUTPUT';
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    background: var(--bg2);
+    padding: 0 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  /* 通知点 */
+  .nav-badge {
+    background: var(--danger);
+    color: white;
+    font-size: 9px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    margin-left: auto;
+  }
+
+  /* 空状态 */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text3);
+  }
+
+  .empty-icon { font-size: 32px; margin-bottom: 12px; }
+  .empty-text { font-size: 13px; }
+
+  /* 响应式 */
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .week-grid { grid-template-columns: repeat(3, 1fr); }
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+  }
+
+  /* 经验教训库 */
+  .exp-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: var(--bg);
+    transition: border-color 0.15s;
+  }
+  .exp-item:hover { border-color: var(--border2); }
+  .exp-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+  .exp-date { font-family:var(--mono); font-size:10px; color:var(--text3); margin-left:auto; }
+  .exp-content { font-size:13px; color:var(--text2); line-height:1.7; white-space:pre-wrap; }
+  .exp-outcome { margin-top:8px; padding-top:8px; border-top:1px solid var(--border); font-size:12px; color:var(--text3); font-family:var(--mono); }
+  .exp-outcome.positive { color:var(--success); }
+  .exp-outcome.negative { color:var(--danger); }
+
+  /* 文件上传区 */
+  .file-drop {
+    border: 2px dashed var(--border2);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg);
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .file-drop:hover, .file-drop.drag-over { border-color:var(--accent); background:rgba(0,212,170,0.04); }
+  .file-drop input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .file-drop-icon { font-size:24px; margin-bottom:6px; color:var(--text3); }
+  .file-drop-text { font-size:13px; color:var(--text2); }
+  .file-drop-sub { font-size:11px; color:var(--text3); margin-top:3px; font-family:var(--mono); }
+  .file-name-tag {
+    display:inline-flex; align-items:center; gap:6px;
+    margin-top:10px; padding:6px 12px;
+    background:rgba(0,212,170,0.08); border:1px solid rgba(0,212,170,0.2);
+    border-radius:6px; font-size:12px; color:var(--accent); font-family:var(--mono);
+  }
+
+  /* 滚动条 */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* 提示框 */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg3);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--accent);
+    z-index: 1000;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s;
+    font-family: var(--mono);
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* 月度进度环 */
+  .progress-ring {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 16px;
+    background: var(--bg3);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .ring-wrap {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+  }
+
+  .ring-wrap svg { transform: rotate(-90deg); }
+
+  .ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .ring-info h3 { font-size: 15px; margin-bottom: 4px; }
+  .ring-info p { font-size: 12px; color: var(--text2); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">⬡ OPS CENTER</div>
+  <div class="topbar-right">
+    <span class="date-chip" id="topbar-date">--</span>
+    <div class="status-dot"></div>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- 侧边栏 -->
+  <nav class="sidebar">
+    <div class="nav-section">
+      <div class="nav-label">每日</div>
+      <div class="nav-item active" onclick="goto('today')">
+        <span class="nav-icon">◈</span> 今日作战
+      </div>
+      <div class="nav-item" onclick="goto('checkin')">
+        <span class="nav-icon">◎</span> 数据打卡
+        <span class="nav-badge" id="checkin-badge" style="display:none">!</span>
+      </div>
+    </div>
+    <hr class="nav-divider">
+    <div class="nav-section">
+      <div class="nav-label">计划</div>
+      <div class="nav-item" onclick="goto('plan-upload')">
+        <span class="nav-icon">↑</span> 上传月计划
+      </div>
+      <div class="nav-item" onclick="goto('plan-view')">
+        <span class="nav-icon">⊞</span> 计划总览
+      </div>
+    </div>
+    <hr class="nav-divider">
+    <div class="nav-section">
+      <div class="nav-label">总结</div>
+      <div class="nav-item" onclick="goto('summary-day')">
+        <span class="nav-icon">▸</span> 日报查看
+      </div>
+      <div class="nav-item" onclick="goto('summary-week')">
+        <span class="nav-icon">▸▸</span> 周报查看
+      </div>
+      <div class="nav-item" onclick="goto('summary-month')">
+        <span class="nav-icon">▸▸▸</span> 月报查看
+      </div>
+    </div>
+    <hr class="nav-divider">
+    <div class="nav-section">
+      <div class="nav-label">配置</div>
+      <div class="nav-item" onclick="goto('experience')">
+        <span class="nav-icon">◆</span> 经验教训库
+      </div>
+      <div class="nav-item" onclick="goto('config')">
+        <span class="nav-icon">⚙</span> 店铺配置
+      </div>
+    </div>
+  </nav>
+
+  <!-- 内容区 -->
+  <main class="content">
+
+    <!-- ===== 今日作战 ===== -->
+    <div class="page active" id="page-today">
+      <div class="page-header">
+        <div>
+          <div class="page-title">今日作战计划</div>
+          <div class="page-sub" id="today-date-sub">--</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="badge badge-green" id="today-mode-badge">常规模式</span>
+          <button class="btn btn-secondary" onclick="refreshTodayPlan()">↻ 刷新计划</button>
+        </div>
+      </div>
+
+      <!-- 月度进度 -->
+      <div class="progress-ring" style="margin-bottom:16px">
+        <div class="ring-wrap">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="#1e2633" stroke-width="6"/>
+            <circle cx="40" cy="40" r="32" fill="none" stroke="#00d4aa" stroke-width="6"
+              stroke-dasharray="201" stroke-dashoffset="100" id="ring-circle" stroke-linecap="round"/>
+          </svg>
+          <div class="ring-center" id="ring-pct">50%</div>
+        </div>
+        <div class="ring-info">
+          <h3>本月GMV进度</h3>
+          <p id="ring-detail">目标 ¥<span id="ring-target">0</span> · 当前 ¥<span id="ring-current">0</span></p>
+          <p style="margin-top:4px" id="ring-gap"></p>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div class="metric-label">千川ROI</div>
+          <div class="metric-value" id="today-roi" style="font-size:20px">--</div>
+          <div class="metric-delta">阈值 <span id="roi-threshold-disp">1.5</span></div>
+        </div>
+      </div>
+
+      <!-- 情报联动提示 -->
+      <div id="intel-tip" class="card" style="border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.04);display:none">
+        <div class="card-title" style="color:var(--purple)">今日情报联动</div>
+        <div id="intel-tip-text" style="font-size:13px;color:var(--text2)"></div>
+      </div>
+
+      <!-- 任务列表 -->
+      <div class="card">
+        <div class="card-title">今日任务清单</div>
+        <div id="today-tasks">
+          <div class="empty-state">
+            <div class="empty-icon">◎</div>
+            <div class="empty-text">暂无今日任务<br>请先上传月计划或手动添加任务</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px">
+          <input type="text" id="new-task-input" placeholder="添加临时任务..." style="flex:1">
+          <select id="new-task-priority" style="width:80px">
+            <option value="p1">P1</option>
+            <option value="p2" selected>P2</option>
+            <option value="p3">P3</option>
+          </select>
+          <button class="btn btn-secondary" onclick="addTempTask()">添加</button>
+        </div>
+      </div>
+
+      <!-- 完成进度 -->
+      <div class="card" style="padding:14px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--text2)">今日完成进度</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--accent)" id="task-progress-text">0 / 0</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="task-progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 数据打卡 ===== -->
+    <div class="page" id="page-checkin">
+      <div class="page-header">
+        <div>
+          <div class="page-title">17:20 数据打卡</div>
+          <div class="page-sub">填写今日核心数据，AI自动生成复盘报告</div>
+        </div>
+        <span class="badge badge-yellow">每日 17:20</span>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">今日核心数据</div>
+          <div class="form-group">
+            <label>今日 GMV (¥)</label>
+            <input type="number" id="ci-gmv" placeholder="例：12500">
+          </div>
+          <div class="form-group">
+            <label>千川 ROI</label>
+            <input type="number" id="ci-roi" step="0.01" placeholder="例：1.85">
+          </div>
+          <div class="form-group">
+            <label>千川消耗 (¥)</label>
+            <input type="number" id="ci-spend" placeholder="例：6800">
+          </div>
+          <div class="form-group">
+            <label>进店UV</label>
+            <input type="number" id="ci-uv" placeholder="例：3200">
+          </div>
+          <div class="form-group">
+            <label>转化率 (%)</label>
+            <input type="number" id="ci-cvr" step="0.1" placeholder="例：3.9">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">执行情况</div>
+          <div class="form-group">
+            <label>未完成原因（一句话）</label>
+            <textarea id="ci-uncompleted" placeholder="例：主图更新因设计排期延迟，预计明日完成" style="min-height:80px"></textarea>
+          </div>
+          <div class="form-group">
+            <label>今日最大阻碍 / 临时突发</label>
+            <textarea id="ci-blocker" placeholder="例：竞品突然降价15%，引发转化下滑" style="min-height:80px"></textarea>
+          </div>
+          <div class="form-group">
+            <label>今日灵感 / 有效尝试</label>
+            <textarea id="ci-insight" placeholder="例：新话术'限时48h'测试ROI提升0.3" style="min-height:70px"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="submitCheckin()">✓ 提交打卡 · 生成复盘</button>
+        <button class="btn btn-secondary" onclick="saveDraft()">保存草稿</button>
+      </div>
+
+      <!-- AI复盘输出 -->
+      <div id="checkin-result" style="display:none;margin-top:24px">
+        <div class="card">
+          <div class="card-title">今日复盘报告</div>
+          <div class="ai-output" id="checkin-output"></div>
+          <div class="btn-row">
+            <button class="btn btn-secondary" onclick="saveReport()">存入日报</button>
+            <button class="btn btn-secondary" onclick="copyReport()">复制全文</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 上传月计划 ===== -->
+    <div class="page" id="page-plan-upload">
+      <div class="page-header">
+        <div>
+          <div class="page-title">上传月度工作计划</div>
+          <div class="page-sub">系统将自动解析并生成动态每日任务</div>
+        </div>
+        <span class="badge badge-blue">每月1次</span>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <div class="card-title">月度目标设定</div>
+            <div class="form-group">
+              <label>月份</label>
+              <input type="text" id="plan-month" placeholder="例：2026-04">
+            </div>
+            <div class="form-group">
+              <label>GMV 目标 (¥)</label>
+              <input type="number" id="plan-gmv" placeholder="例：500000">
+            </div>
+            <div class="form-group">
+              <label>千川预算 (¥)</label>
+              <input type="number" id="plan-budget" placeholder="例：80000">
+            </div>
+            <div class="form-group">
+              <label>目标 ROI</label>
+              <input type="number" id="plan-roi" step="0.1" placeholder="例：1.8">
+            </div>
+            <div class="form-group">
+              <label>核心痛点</label>
+              <input type="text" id="plan-pain" placeholder="例：转化率偏低，客单价不稳">
+            </div>
+            <div class="form-group">
+              <label>本月重要节点</label>
+              <input type="text" id="plan-events" placeholder="例：5号大促、18号活动上线">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-title">月度计划正文</div>
+
+            <!-- 文件上传区 -->
+            <div class="form-group">
+              <label>上传文件（.txt / .md / .docx）</label>
+              <div class="file-drop" id="plan-file-drop"
+                ondragover="event.preventDefault();this.classList.add('drag-over')"
+                ondragleave="this.classList.remove('drag-over')"
+                ondrop="handlePlanFileDrop(event)">
+                <input type="file" id="plan-file-input" accept=".txt,.md,.docx"
+                  onchange="handlePlanFileSelect(this)">
+                <div class="file-drop-icon">⬆</div>
+                <div class="file-drop-text">拖拽文件到此处，或点击选择</div>
+                <div class="file-drop-sub">支持 .txt · .md · .docx · 无大小限制</div>
+              </div>
+              <div id="plan-file-tag" style="display:none">
+                <span class="file-name-tag">
+                  <span id="plan-file-name"></span>
+                  <span style="cursor:pointer;opacity:0.6" onclick="clearFileUpload()">✕</span>
+                </span>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--text3);font-size:12px">
+              <div style="flex:1;height:1px;background:var(--border)"></div>
+              <span style="font-family:var(--mono)">或直接粘贴</span>
+              <div style="flex:1;height:1px;background:var(--border)"></div>
+            </div>
+
+            <div class="form-group">
+              <label>粘贴月计划文本（任意格式，不限字数）</label>
+              <textarea id="plan-content" style="min-height:220px" placeholder="可以是大纲、表格文本、详细日程均可，格式不限，字数不限。
+例如：
+第一周：完成主图A/B测试，跑通新定向策略
+第二周：优化详情页，提升加购率
+第三周：配合大促，冲量主推SKU
+第四周：复盘全月，制定下月计划..."></textarea>
+            </div>
+
+            <div style="font-size:11px;color:var(--text3);font-family:var(--mono)">
+              字符数：<span id="plan-char-count">0</span> · 无上限
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="submitPlan()">↑ 解析并生成动态计划</button>
+        <button class="btn btn-secondary" onclick="clearPlan()">清空</button>
+      </div>
+
+      <!-- 解析结果 -->
+      <div id="plan-result" style="display:none;margin-top:24px">
+        <div class="card">
+          <div class="card-title">AI 解析结果</div>
+          <div class="ai-output" id="plan-output"></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="applyPlan()">✓ 应用此计划</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('plan-result').style.display='none'">重新调整</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 计划总览 ===== -->
+    <div class="page" id="page-plan-view">
+      <div class="page-header">
+        <div>
+          <div class="page-title">计划总览</div>
+          <div class="page-sub" id="plan-view-month">--</div>
+        </div>
+        <button class="btn btn-secondary" onclick="goto('plan-upload')">+ 更新计划</button>
+      </div>
+
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('week-view', this)">本周计划</div>
+        <div class="tab" onclick="switchTab('month-view', this)">全月计划</div>
+        <div class="tab" onclick="switchTab('intel-view', this)">情报联动调整</div>
+      </div>
+
+      <div class="tab-panel active" id="tab-week-view">
+        <div class="week-grid" id="week-grid">
+          <!-- 由JS填充 -->
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin-top:12px;font-family:var(--mono)">· 绿框为今天 · 点击日期卡片可查看详情</p>
+      </div>
+
+      <div class="tab-panel" id="tab-month-view">
+        <div class="card">
+          <div class="card-title">月计划原文</div>
+          <div class="summary-block" id="month-plan-display">
+            <span class="summary-placeholder">暂未上传月计划，请前往「上传月计划」页面录入。</span>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">月度目标</div>
+          <div class="metric-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:0" id="plan-metrics-display">
+            <div class="metric-card">
+              <div class="metric-label">GMV目标</div>
+              <div class="metric-value" id="disp-gmv">--</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">千川预算</div>
+              <div class="metric-value" id="disp-budget">--</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">目标ROI</div>
+              <div class="metric-value" id="disp-roi">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-intel-view">
+        <div class="card">
+          <div class="card-title">情报联动调整记录</div>
+          <div id="intel-log">
+            <div class="empty-state">
+              <div class="empty-icon">◎</div>
+              <div class="empty-text">暂无情报调整记录<br>当系统检测到业绩异常或高价值情报时，自动记录于此</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 日报查看 ===== -->
+    <div class="page" id="page-summary-day">
+      <div class="page-header">
+        <div>
+          <div class="page-title">日报记录</div>
+          <div class="page-sub">点击展开查看详细复盘内容</div>
+        </div>
+        <span class="badge badge-green" id="day-report-count">0 条</span>
+      </div>
+      <div id="day-reports-list">
+        <div class="empty-state">
+          <div class="empty-icon">▸</div>
+          <div class="empty-text">暂无日报记录<br>每日17:20打卡后，系统自动生成并存档</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 周报查看 ===== -->
+    <div class="page" id="page-summary-week">
+      <div class="page-header">
+        <div>
+          <div class="page-title">周报记录</div>
+          <div class="page-sub">每周日自动生成，聚合7天复盘</div>
+        </div>
+        <button class="btn btn-primary" onclick="generateWeekReport()">+ 立即生成本周报</button>
+      </div>
+      <div id="week-reports-list">
+        <div class="empty-state">
+          <div class="empty-icon">▸▸</div>
+          <div class="empty-text">暂无周报记录</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 月报查看 ===== -->
+    <div class="page" id="page-summary-month">
+      <div class="page-header">
+        <div>
+          <div class="page-title">月报记录</div>
+          <div class="page-sub">每月30日自动生成方法论沉淀报告</div>
+        </div>
+        <button class="btn btn-primary" onclick="generateMonthReport()">+ 立即生成本月报</button>
+      </div>
+      <div id="month-reports-list">
+        <div class="empty-state">
+          <div class="empty-icon">▸▸▸</div>
+          <div class="empty-text">暂无月报记录</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 经验教训库 ===== -->
+    <div class="page" id="page-experience">
+      <div class="page-header">
+        <div>
+          <div class="page-title">经验教训库</div>
+          <div class="page-sub">沉淀个人实战经验，AI分析时自动调取作为背景知识</div>
+        </div>
+        <span class="badge badge-purple" id="exp-count-badge">0 条</span>
+      </div>
+
+      <div class="grid2">
+        <!-- 录入区 -->
+        <div>
+          <div class="card">
+            <div class="card-title">录入新经验</div>
+
+            <div class="form-group">
+              <label>场景分类</label>
+              <select id="exp-category">
+                <option value="投流">投流优化</option>
+                <option value="选品">选品策略</option>
+                <option value="内容">内容/素材</option>
+                <option value="转化">转化提升</option>
+                <option value="客服">客服售后</option>
+                <option value="竞品">竞品应对</option>
+                <option value="大促">大促玩法</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>结果标签</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:0">
+                  <input type="radio" name="exp-outcome" value="positive" checked style="width:auto"> 有效经验 ✓
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:0">
+                  <input type="radio" name="exp-outcome" value="negative" style="width:auto"> 踩坑教训 ✗
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;color:var(--text);margin-bottom:0">
+                  <input type="radio" name="exp-outcome" value="neutral" style="width:auto"> 待验证 ?
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>标题（一句话概括）</label>
+              <input type="text" id="exp-title" placeholder="例：千川人群包用竞品店铺粉丝效果优于兴趣标签">
+            </div>
+
+            <div class="form-group">
+              <label>详细描述（背景、做法、结果）</label>
+              <textarea id="exp-detail" style="min-height:120px"
+                placeholder="例：4月第二周测试，主推SKU-A，原用兴趣标签ROI 1.4，换成竞品粉丝包后ROI提升至1.9，消耗从800增至1200/天，GMV增长35%。原因可能是竞品粉丝购买意向更强。建议后续新品首选此定向方式。"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>适用条件（可选）</label>
+              <input type="text" id="exp-condition" placeholder="例：适用于客单价200-500元的鞋类，月销50万以上店铺">
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="saveExperience()">+ 保存到经验库</button>
+              <button class="btn btn-secondary" onclick="clearExpForm()">清空</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 搜索和统计 -->
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">AI 提炼摘要</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+              基于当前经验库，AI提炼你的核心运营方法论，自动注入到每日复盘分析中。
+            </p>
+            <button class="btn btn-primary" style="width:100%" onclick="generateExpSummary()">
+              ◆ 提炼我的方法论
+            </button>
+            <div id="exp-summary-output" style="display:none;margin-top:14px">
+              <div class="ai-output" id="exp-summary-text" style="font-size:12px;line-height:1.8"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">筛选查看</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+              <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterExp('all')">全部</button>
+              <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterExp('positive')">✓ 有效</button>
+              <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterExp('negative')">✗ 踩坑</button>
+              <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterExp('投流')">投流</button>
+              <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterExp('选品')">选品</button>
+              <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterExp('转化')">转化</button>
+              <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterExp('大促')">大促</button>
+            </div>
+
+            <!-- 统计条 -->
+            <div style="display:flex;gap:16px;padding:10px 0;border-top:1px solid var(--border)">
+              <div style="text-align:center">
+                <div style="font-family:var(--mono);font-size:20px;color:var(--success)" id="exp-stat-positive">0</div>
+                <div style="font-size:10px;color:var(--text3)">有效经验</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-family:var(--mono);font-size:20px;color:var(--danger)" id="exp-stat-negative">0</div>
+                <div style="font-size:10px;color:var(--text3)">踩坑教训</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-family:var(--mono);font-size:20px;color:var(--warn)" id="exp-stat-neutral">0</div>
+                <div style="font-size:10px;color:var(--text3)">待验证</div>
+              </div>
+              <div style="text-align:center;margin-left:auto">
+                <div style="font-family:var(--mono);font-size:20px;color:var(--text)" id="exp-stat-total">0</div>
+                <div style="font-size:10px;color:var(--text3)">总计</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 经验列表 -->
+      <div class="card" style="margin-top:4px">
+        <div class="card-title">经验记录</div>
+        <div id="exp-list">
+          <div class="empty-state">
+            <div class="empty-icon">◆</div>
+            <div class="empty-text">还没有经验记录<br>把你的每一条实战心得沉淀下来，越积越值钱</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 店铺配置 ===== -->
+    <div class="page" id="page-config">
+      <div class="page-header">
+        <div>
+          <div class="page-title">店铺前置配置</div>
+          <div class="page-sub">一次性配置，影响所有AI分析质量</div>
+        </div>
+        <span class="badge badge-purple">前置配置</span>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">店铺基本信息</div>
+          <div class="form-group">
+            <label>店铺类目</label>
+            <input type="text" id="cfg-category" placeholder="例：鞋类/运动鞋">
+          </div>
+          <div class="form-group">
+            <label>主推SKU（逗号分隔）</label>
+            <input type="text" id="cfg-skus" placeholder="例：SKU-A运动鞋, SKU-B袜子">
+          </div>
+          <div class="form-group">
+            <label>价格带</label>
+            <input type="text" id="cfg-price" placeholder="例：鞋类 ¥200-500">
+          </div>
+          <div class="form-group">
+            <label>ROI 警戒阈值</label>
+            <input type="number" id="cfg-roi-threshold" step="0.1" placeholder="例：1.5" value="1.5">
+          </div>
+          <div class="form-group">
+            <label>业绩落后触发应急模式阈值 (%)</label>
+            <input type="number" id="cfg-emergency-pct" placeholder="例：10" value="10">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">竞品与信息源</div>
+          <div class="form-group">
+            <label>核心竞品店铺（每行一个）</label>
+            <textarea id="cfg-competitors" style="min-height:90px" placeholder="竞品A&#10;竞品B&#10;竞品C"></textarea>
+          </div>
+          <div class="form-group">
+            <label>信息源白名单</label>
+            <textarea id="cfg-sources" style="min-height:90px" placeholder="飞瓜数据&#10;卡思数据&#10;派代网&#10;亿邦动力"></textarea>
+          </div>
+          <div class="form-group">
+            <label>核心痛点 / 当前最大挑战</label>
+            <input type="text" id="cfg-pain" placeholder="例：转化率偏低，退货率高">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">当月实时数据（手动更新）</div>
+        <div class="grid3">
+          <div class="form-group" style="margin-bottom:0">
+            <label>当前累计GMV (¥)</label>
+            <input type="number" id="cfg-current-gmv" placeholder="例：250000">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>当前千川ROI</label>
+            <input type="number" id="cfg-current-roi" step="0.01" placeholder="例：1.72">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>当前日期</label>
+            <input type="text" id="cfg-today-date" placeholder="自动填入">
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveConfig()">✓ 保存配置</button>
+        <button class="btn btn-secondary" onclick="loadConfig()">重置</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── API 配置 ────────────────────────────────
+// 填入你的阿里云服务器公网IP或域名，末尾不加斜杠
+const API_BASE = 'http://43.103.54.219/api';
+
+// ─── 状态（内存缓存，数据源是服务器）────────
+let state = {
+  config: {},
+  plan: {},
+  tasks: [],
+  dayReports: [],
+  weekReports: [],
+  monthReports: [],
+  intelLog: []
+};
+
+// ─── API 封装 ────────────────────────────────
+async function apiGet(key) {
+  try {
+    const r = await fetch(`${API_BASE}/${key}`);
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch(e) {
+    console.warn(`GET ${key} failed:`, e);
+    return null;
+  }
+}
+
+async function apiPost(key, data) {
+  try {
+    const r = await fetch(`${API_BASE}/${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch(e) {
+    console.warn(`POST ${key} failed:`, e);
+    return null;
+  }
+}
+
+async function apiAI(endpoint, body) {
+  const r = await fetch(`${API_BASE}/ai/${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await r.json();
+  if (!r.ok || data.error) throw new Error(data.error || '请求失败');
+  return data.result;
+}
+
+// ─── 全量加载（页面初始化时）────────────────
+async function loadAll() {
+  showLoading(true);
+  const [config, plan, tasks, dayReports, weekReports, monthReports, intelLog, experiences] = await Promise.all([
+    apiGet('config'),
+    apiGet('plan'),
+    apiGet('tasks'),
+    apiGet('day_reports'),
+    apiGet('week_reports'),
+    apiGet('month_reports'),
+    apiGet('intel_log'),
+    apiGet('experiences'),
+  ]);
+  state.config       = config       || {};
+  state.plan         = plan         || {};
+  state.tasks        = tasks        || [];
+  state.dayReports   = dayReports   || [];
+  state.weekReports  = weekReports  || [];
+  state.monthReports = monthReports || [];
+  state.intelLog     = intelLog     || [];
+  state.experiences  = experiences  || [];
+  showLoading(false);
+}
+
+function showLoading(on) {
+  // 简单的顶栏状态提示
+  const dot = document.querySelector('.status-dot');
+  if (dot) dot.style.background = on ? 'var(--warn)' : 'var(--accent)';
+}
+
+// ─── 工具函数 ───────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function fmtNum(n) {
+  if (!n && n !== 0) return '--';
+  return Number(n).toLocaleString('zh-CN');
+}
+
+function today() {
+  return new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+}
+
+function dayOfWeek() {
+  const d = ['日','一','二','三','四','五','六'];
+  return d[new Date().getDay()];
+}
+
+function updateTopDate() {
+  const d = new Date();
+  const str = d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
+  document.getElementById('topbar-date').textContent = str;
+  document.getElementById('today-date-sub').textContent = `${today()} 周${dayOfWeek()}`;
+  document.getElementById('cfg-today-date').value = today();
+}
+
+// ─── 导航 ───────────────────────────────────
+function goto(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  event?.target?.closest('.nav-item')?.classList.add('active');
+  if (page === 'today') refreshTodayPage();
+  if (page === 'plan-view') renderPlanView();
+  if (page === 'summary-day') renderDayReports();
+  if (page === 'summary-week') renderWeekReports();
+  if (page === 'summary-month') renderMonthReports();
+  if (page === 'experience') renderExperiencePage();
+}
+
+function switchTab(id, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ─── 今日页面 ──────────────────────────────
+function refreshTodayPage() {
+  refreshMonthProgress();
+  renderTodayTasks();
+  updateTaskProgress();
+  showIntelTip();
+}
+
+function refreshTodayPlan() {
+  renderTodayTasks();
+  showToast('今日计划已刷新');
+}
+
+function refreshMonthProgress() {
+  const cfg = state.config;
+  const plan = state.plan;
+  const target = parseFloat(plan.gmv) || 0;
+  const current = parseFloat(cfg.currentGmv) || 0;
+  const pct = target > 0 ? Math.min(100, Math.round(current / target * 100)) : 0;
+  const roi = parseFloat(cfg.currentRoi) || 0;
+  const threshold = parseFloat(cfg.roiThreshold) || 1.5;
+
+  document.getElementById('ring-pct').textContent = pct + '%';
+  document.getElementById('ring-target').textContent = fmtNum(target);
+  document.getElementById('ring-current').textContent = fmtNum(current);
+  document.getElementById('ring-gap').textContent = target > 0 ? `缺口 ¥${fmtNum(target - current)}` : '请配置月目标';
+
+  const gap = pct < (100 - parseFloat(cfg.emergencyPct || 10));
+  document.getElementById('today-mode-badge').textContent = gap && pct < 80 ? '⚠ 应急模式' : '常规模式';
+  document.getElementById('today-mode-badge').className = 'badge ' + (gap && pct < 80 ? 'badge-red' : 'badge-green');
+
+  const offset = 201 - (201 * pct / 100);
+  document.getElementById('ring-circle').setAttribute('stroke-dashoffset', offset);
+
+  const roiEl = document.getElementById('today-roi');
+  roiEl.textContent = roi > 0 ? roi.toFixed(2) : '--';
+  roiEl.className = 'metric-value' + (roi >= threshold ? ' good' : roi > 0 ? ' bad' : '');
+  document.getElementById('roi-threshold-disp').textContent = threshold;
+}
+
+function showIntelTip() {
+  if (state.intelLog && state.intelLog.length > 0) {
+    const latest = state.intelLog[state.intelLog.length - 1];
+    document.getElementById('intel-tip').style.display = 'block';
+    document.getElementById('intel-tip-text').textContent = latest.suggestion;
+  }
+}
+
+// ─── 任务管理 ──────────────────────────────
+function renderTodayTasks() {
+  const container = document.getElementById('today-tasks');
+  if (!state.tasks || state.tasks.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">暂无今日任务<br>请先上传月计划或手动添加任务</div></div>`;
+    return;
+  }
+  container.innerHTML = state.tasks.map((t, i) => `
+    <div class="task-item ${t.done ? 'done' : ''}" id="task-${i}">
+      <div class="task-check ${t.done ? 'checked' : ''}" onclick="toggleTask(${i})">
+        ${t.done ? '✓' : ''}
+      </div>
+      <div class="task-text">${t.text}</div>
+      <span class="task-tag tag-${t.priority || 'p2'}">${(t.priority || 'P2').toUpperCase()}</span>
+    </div>
+  `).join('');
+  updateTaskProgress();
+}
+
+async function toggleTask(i) {
+  state.tasks[i].done = !state.tasks[i].done;
+  renderTodayTasks();
+  await syncTasks();
+}
+
+function updateTaskProgress() {
+  const total = state.tasks.length;
+  const done = state.tasks.filter(t => t.done).length;
+  const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  document.getElementById('task-progress-text').textContent = `${done} / ${total}`;
+  const bar = document.getElementById('task-progress-bar');
+  bar.style.width = pct + '%';
+  bar.className = 'progress-fill' + (pct < 50 ? ' danger' : pct < 80 ? ' warn' : '');
+}
+
+async function addTempTask() {
+  const input = document.getElementById('new-task-input');
+  const priority = document.getElementById('new-task-priority').value;
+  if (!input.value.trim()) return;
+  state.tasks.push({ text: input.value.trim(), priority, done: false, temp: true, date: today() });
+  input.value = '';
+  renderTodayTasks();
+  await syncTasks();
+  showToast('任务已添加');
+}
+
+// ─── 数据打卡 ──────────────────────────────
+async function submitCheckin() {
+  const gmv  = document.getElementById('ci-gmv').value;
+  const roi  = document.getElementById('ci-roi').value;
+  if (!gmv || !roi) { showToast('请至少填写GMV和ROI'); return; }
+
+  const btn = event.target;
+  btn.textContent = '生成中...';
+  btn.disabled = true;
+
+  try {
+    const text = await apiAI('checkin', {
+      gmv,
+      roi,
+      spend:       document.getElementById('ci-spend').value,
+      uv:          document.getElementById('ci-uv').value,
+      cvr:         document.getElementById('ci-cvr').value,
+      uncompleted: document.getElementById('ci-uncompleted').value,
+      blocker:     document.getElementById('ci-blocker').value,
+      insight:     document.getElementById('ci-insight').value,
+    });
+
+    document.getElementById('checkin-result').style.display = 'block';
+    document.getElementById('checkin-output').textContent = text;
+
+    // 后端已自动存入日报，前端同步拉取
+    state.dayReports = await apiGet('day_reports') || state.dayReports;
+    showToast('复盘报告已生成并存档');
+  } catch(e) {
+    document.getElementById('checkin-result').style.display = 'block';
+    document.getElementById('checkin-output').textContent = `⚠ 生成失败：${e.message}\n\n请检查服务器连接后重试。`;
+  }
+
+  btn.textContent = '✓ 提交打卡 · 生成复盘';
+  btn.disabled = false;
+}
+
+function saveReport() { showToast('后端已自动存档，无需手动保存'); }
+
+function saveDraft() {
+  showToast('草稿已保存');
+  save();
+}
+
+function copyReport() {
+  const text = document.getElementById('checkin-output').textContent;
+  navigator.clipboard?.writeText(text).then(() => showToast('已复制到剪贴板'));
+}
+
+// ─── 月计划上传 ────────────────────────────
+async function submitPlan() {
+  const content = document.getElementById('plan-content').value;
+  if (!content.trim()) { showToast('请输入月度计划内容'); return; }
+
+  const btn = event.target;
+  btn.textContent = '解析中...';
+  btn.disabled = true;
+
+  try {
+    const text = await apiAI('parse-plan', {
+      month:   document.getElementById('plan-month').value,
+      gmv:     document.getElementById('plan-gmv').value,
+      budget:  document.getElementById('plan-budget').value,
+      roi:     document.getElementById('plan-roi').value,
+      pain:    document.getElementById('plan-pain').value,
+      events:  document.getElementById('plan-events').value,
+      content,
+    });
+
+    document.getElementById('plan-result').style.display = 'block';
+    document.getElementById('plan-output').textContent = text;
+    state._pendingPlan = {
+      month:   document.getElementById('plan-month').value,
+      gmv:     document.getElementById('plan-gmv').value,
+      budget:  document.getElementById('plan-budget').value,
+      roi:     document.getElementById('plan-roi').value,
+      pain:    document.getElementById('plan-pain').value,
+      events:  document.getElementById('plan-events').value,
+      content, parsed: text
+    };
+  } catch(e) {
+    document.getElementById('plan-result').style.display = 'block';
+    document.getElementById('plan-output').textContent = `⚠ 解析失败：${e.message}`;
+  }
+
+  btn.textContent = '↑ 解析并生成动态计划';
+  btn.disabled = false;
+}
+
+async function applyPlan() {
+  const p = state._pendingPlan;
+  if (!p) return;
+
+  const planData = {
+    month: p.month, gmv: p.gmv, budget: p.budget,
+    roi: p.roi, pain: p.pain, events: p.events,
+    content: p.content, parsed: p.parsed
+  };
+  state.plan = planData;
+  await apiPost('plan', planData);
+
+  // 生成初始任务并同步
+  state.tasks = [
+    { text: '查看并确认本月计划已正式启动', priority: 'p1', done: false, date: today() },
+    { text: `确认月度GMV目标：¥${fmtNum(p.gmv)}`, priority: 'p1', done: false, date: today() },
+    { text: '情报系统首次运行，获取本周行业动态', priority: 'p2', done: false, date: today() },
+  ];
+  await syncTasks();
+
+  showToast('✓ 月计划已保存到服务器');
+  goto('plan-view');
+}
+
+function clearPlan() {
+  document.getElementById('plan-content').value = '';
+  document.getElementById('plan-month').value = '';
+  document.getElementById('plan-gmv').value = '';
+  document.getElementById('plan-budget').value = '';
+  document.getElementById('plan-roi').value = '';
+  document.getElementById('plan-pain').value = '';
+  document.getElementById('plan-events').value = '';
+  document.getElementById('plan-result').style.display = 'none';
+}
+
+// ─── 计划总览 ──────────────────────────────
+function renderPlanView() {
+  const plan = state.plan;
+  document.getElementById('plan-view-month').textContent = plan.month ? plan.month + ' 月度计划' : '暂无月计划';
+
+  // 月计划显示
+  const disp = document.getElementById('month-plan-display');
+  if (plan.content) {
+    disp.textContent = plan.parsed || plan.content;
+    disp.classList.add('has-content');
+  }
+
+  // 指标
+  document.getElementById('disp-gmv').textContent = plan.gmv ? '¥' + fmtNum(plan.gmv) : '--';
+  document.getElementById('disp-budget').textContent = plan.budget ? '¥' + fmtNum(plan.budget) : '--';
+  document.getElementById('disp-roi').textContent = plan.roi || '--';
+
+  // 周视图
+  renderWeekGrid();
+
+  // 情报记录
+  renderIntelLog();
+}
+
+function renderWeekGrid() {
+  const days = ['一','二','三','四','五','六','日'];
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  const grid = document.getElementById('week-grid');
+
+  grid.innerHTML = days.map((d, i) => {
+    const isToday = i === todayIdx;
+    const dayTasks = state.tasks.filter(t => !t.done).slice(0, 2);
+    const taskHtml = isToday && dayTasks.length > 0
+      ? dayTasks.map(t => `<div class="day-task">· ${t.text.substring(0, 18)}${t.text.length > 18 ? '…' : ''}</div>`).join('')
+      : '<div class="day-task" style="color:var(--text3)">--</div>';
+
+    return `<div class="day-card ${isToday ? 'today' : ''}">
+      <div class="day-label">周${d}</div>
+      ${taskHtml}
+    </div>`;
+  }).join('');
+}
+
+function renderIntelLog() {
+  const container = document.getElementById('intel-log');
+  if (!state.intelLog || state.intelLog.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">暂无情报调整记录</div></div>`;
+    return;
+  }
+  container.innerHTML = state.intelLog.map(item => `
+    <div class="task-item">
+      <span class="badge badge-purple" style="flex-shrink:0">${item.date}</span>
+      <div class="task-text" style="margin-left:8px">${item.suggestion}</div>
+      <span class="badge badge-yellow">${item.tag}</span>
+    </div>
+  `).join('');
+}
+
+// ─── 日报渲染 ──────────────────────────────
+function renderDayReports() {
+  const list = document.getElementById('day-reports-list');
+  const reports = state.dayReports || [];
+  document.getElementById('day-report-count').textContent = reports.length + ' 条';
+
+  if (reports.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">▸</div><div class="empty-text">暂无日报记录<br>每日17:20打卡后，系统自动生成并存档</div></div>`;
+    return;
+  }
+
+  list.innerHTML = reports.map((r, i) => `
+    <div class="history-item">
+      <div class="history-header" onclick="toggleHistory('day-body-${i}')">
+        <div>
+          <div class="history-title">${r.date} 日报</div>
+          <div class="history-date">${r.summary}</div>
+        </div>
+        <span class="badge ${parseFloat(r.roi) >= (parseFloat(state.config.roiThreshold) || 1.5) ? 'badge-green' : 'badge-red'}">
+          ROI ${r.roi || '--'}
+        </span>
+      </div>
+      <div class="history-body" id="day-body-${i}">${r.content || '无内容'}</div>
+    </div>
+  `).join('');
+}
+
+// ─── 周报生成 ──────────────────────────────
+async function generateWeekReport() {
+  if ((state.dayReports || []).length === 0) { showToast('暂无日报数据，请先完成打卡'); return; }
+  const btn = event.target;
+  btn.textContent = '生成中...';
+  btn.disabled = true;
+  try {
+    await apiAI('week-report', {});
+    state.weekReports = await apiGet('week_reports') || state.weekReports;
+    renderWeekReports();
+    showToast('周报已生成并存档');
+  } catch(e) {
+    showToast(`生成失败：${e.message}`);
+  }
+  btn.textContent = '+ 立即生成本周报';
+  btn.disabled = false;
+}
+
+function renderWeekReports() {
+  const list = document.getElementById('week-reports-list');
+  const reports = state.weekReports || [];
+
+  if (reports.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">▸▸</div><div class="empty-text">暂无周报记录</div></div>`;
+    return;
+  }
+
+  list.innerHTML = reports.map((r, i) => `
+    <div class="history-item">
+      <div class="history-header" onclick="toggleHistory('week-body-${i}')">
+        <div class="history-title">周报 · ${r.date}</div>
+      </div>
+      <div class="history-body" id="week-body-${i}">${r.content}</div>
+    </div>
+  `).join('');
+}
+
+// ─── 月报生成 ──────────────────────────────
+async function generateMonthReport() {
+  if ((state.dayReports || []).length === 0) { showToast('暂无日报数据'); return; }
+  const btn = event.target;
+  btn.textContent = '生成中...';
+  btn.disabled = true;
+  try {
+    await apiAI('month-report', {});
+    state.monthReports = await apiGet('month_reports') || state.monthReports;
+    renderMonthReports();
+    showToast('月报已生成并存档');
+  } catch(e) {
+    showToast(`生成失败：${e.message}`);
+  }
+  btn.textContent = '+ 立即生成本月报';
+  btn.disabled = false;
+}
+
+function renderMonthReports() {
+  const list = document.getElementById('month-reports-list');
+  const reports = state.monthReports || [];
+
+  if (reports.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">▸▸▸</div><div class="empty-text">暂无月报记录</div></div>`;
+    return;
+  }
+
+  list.innerHTML = reports.map((r, i) => `
+    <div class="history-item">
+      <div class="history-header" onclick="toggleHistory('month-body-${i}')">
+        <div>
+          <div class="history-title">${r.month || r.date} 月报</div>
+          <div class="history-date">GMV ¥${fmtNum(r.gmv)} · 平均ROI ${r.roi}</div>
+        </div>
+        <span class="badge badge-purple">月报</span>
+      </div>
+      <div class="history-body" id="month-body-${i}">${r.content}</div>
+    </div>
+  `).join('');
+}
+
+function toggleHistory(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+// ─── 文件上传处理（月计划）────────────────
+function handlePlanFileSelect(input) {
+  const file = input.files[0];
+  if (file) readPlanFile(file);
+}
+
+function handlePlanFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('plan-file-drop').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) readPlanFile(file);
+}
+
+function readPlanFile(file) {
+  const allowed = ['.txt', '.md', '.docx'];
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (!allowed.includes(ext)) { showToast('仅支持 .txt / .md / .docx 格式'); return; }
+
+  document.getElementById('plan-file-name').textContent = file.name + ' (' + (file.size/1024).toFixed(1) + 'KB)';
+  document.getElementById('plan-file-tag').style.display = 'block';
+
+  if (ext === '.docx') {
+    // docx 用 FileReader 读取为 ArrayBuffer，再用 mammoth（CDN）解析
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        if (typeof mammoth === 'undefined') {
+          // 动态加载 mammoth
+          await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+        }
+        const result = await mammoth.extractRawText({ arrayBuffer: e.target.result });
+        document.getElementById('plan-content').value = result.value;
+        updatePlanCharCount();
+        showToast('文件解析成功');
+      } catch(err) {
+        showToast('docx解析失败，请复制粘贴内容');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    // txt / md 直接读文本
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('plan-content').value = e.target.result;
+      updatePlanCharCount();
+      showToast('文件读取成功');
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+}
+
+function clearFileUpload() {
+  document.getElementById('plan-file-input').value = '';
+  document.getElementById('plan-file-tag').style.display = 'none';
+  document.getElementById('plan-file-name').textContent = '';
+}
+
+function updatePlanCharCount() {
+  const len = document.getElementById('plan-content').value.length;
+  document.getElementById('plan-char-count').textContent = len.toLocaleString('zh-CN');
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// ─── 经验教训库 ──────────────────────────
+let expFilter = 'all';
+
+async function saveExperience() {
+  const title     = document.getElementById('exp-title').value.trim();
+  const detail    = document.getElementById('exp-detail').value.trim();
+  const category  = document.getElementById('exp-category').value;
+  const outcome   = document.querySelector('input[name="exp-outcome"]:checked').value;
+  const condition = document.getElementById('exp-condition').value.trim();
+
+  if (!title || !detail) { showToast('请填写标题和详细描述'); return; }
+
+  const entry = {
+    id:        Date.now(),
+    date:      today(),
+    title,
+    detail,
+    category,
+    outcome,
+    condition,
+  };
+
+  state.experiences = state.experiences || [];
+  state.experiences.unshift(entry);
+  await apiPost('experiences', state.experiences);
+
+  clearExpForm();
+  renderExpList();
+  updateExpStats();
+  showToast('✓ 已保存到经验库');
+}
+
+function clearExpForm() {
+  document.getElementById('exp-title').value = '';
+  document.getElementById('exp-detail').value = '';
+  document.getElementById('exp-condition').value = '';
+  document.querySelector('input[name="exp-outcome"][value="positive"]').checked = true;
+}
+
+function filterExp(key) {
+  expFilter = key;
+  renderExpList();
+}
+
+function renderExpList() {
+  const container = document.getElementById('exp-list');
+  const exps = state.experiences || [];
+
+  const filtered = exps.filter(e => {
+    if (expFilter === 'all') return true;
+    if (expFilter === 'positive' || expFilter === 'negative' || expFilter === 'neutral') return e.outcome === expFilter;
+    return e.category === expFilter;
+  });
+
+  document.getElementById('exp-count-badge').textContent = exps.length + ' 条';
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">◆</div><div class="empty-text">暂无符合条件的记录</div></div>`;
+    return;
+  }
+
+  const outcomeLabel = { positive: '✓ 有效经验', negative: '✗ 踩坑教训', neutral: '? 待验证' };
+  const outcomeClass = { positive: 'badge-green', negative: 'badge-red', neutral: 'badge-yellow' };
+
+  container.innerHTML = filtered.map((e, i) => `
+    <div class="exp-item">
+      <div class="exp-header">
+        <span class="badge badge-purple">${e.category}</span>
+        <span class="badge ${outcomeClass[e.outcome]}">${outcomeLabel[e.outcome]}</span>
+        <strong style="font-size:13px;color:var(--text)">${e.title}</strong>
+        <span class="exp-date">${e.date}</span>
+        <span style="margin-left:4px;cursor:pointer;color:var(--text3);font-size:12px" onclick="deleteExp(${e.id})">✕</span>
+      </div>
+      <div class="exp-content">${e.detail}</div>
+      ${e.condition ? `<div class="exp-outcome">适用条件：${e.condition}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function updateExpStats() {
+  const exps = state.experiences || [];
+  document.getElementById('exp-stat-positive').textContent = exps.filter(e => e.outcome === 'positive').length;
+  document.getElementById('exp-stat-negative').textContent = exps.filter(e => e.outcome === 'negative').length;
+  document.getElementById('exp-stat-neutral').textContent  = exps.filter(e => e.outcome === 'neutral').length;
+  document.getElementById('exp-stat-total').textContent    = exps.length;
+  document.getElementById('exp-count-badge').textContent   = exps.length + ' 条';
+}
+
+async function deleteExp(id) {
+  state.experiences = (state.experiences || []).filter(e => e.id !== id);
+  await apiPost('experiences', state.experiences);
+  renderExpList();
+  updateExpStats();
+  showToast('已删除');
+}
+
+async function generateExpSummary() {
+  const exps = state.experiences || [];
+  if (exps.length === 0) { showToast('还没有经验记录'); return; }
+
+  const btn = event.target;
+  btn.textContent = '提炼中...';
+  btn.disabled = true;
+
+  const expText = exps.slice(0, 30).map(e =>
+    `[${e.category}][${e.outcome === 'positive' ? '有效' : e.outcome === 'negative' ? '踩坑' : '待验证'}] ${e.title}\n${e.detail}`
+  ).join('\n\n');
+
+  try {
+    const text = await apiAI('exp-summary', { experiences: expText });
+    document.getElementById('exp-summary-output').style.display = 'block';
+    document.getElementById('exp-summary-text').textContent = text;
+  } catch(e) {
+    showToast('提炼失败：' + e.message);
+  }
+
+  btn.textContent = '◆ 提炼我的方法论';
+  btn.disabled = false;
+}
+
+// ─── 经验库页面渲染 ──────────────────────
+function renderExperiencePage() {
+  renderExpList();
+  updateExpStats();
+}
+async function saveConfig() {
+  const cfg = {
+    category:     document.getElementById('cfg-category').value,
+    skus:         document.getElementById('cfg-skus').value,
+    price:        document.getElementById('cfg-price').value,
+    roiThreshold: document.getElementById('cfg-roi-threshold').value,
+    emergencyPct: document.getElementById('cfg-emergency-pct').value,
+    competitors:  document.getElementById('cfg-competitors').value,
+    sources:      document.getElementById('cfg-sources').value,
+    pain:         document.getElementById('cfg-pain').value,
+    currentGmv:   document.getElementById('cfg-current-gmv').value,
+    currentRoi:   document.getElementById('cfg-current-roi').value,
+  };
+  state.config = cfg;
+  const ok = await apiPost('config', cfg);
+  showToast(ok ? '✓ 配置已保存到服务器' : '⚠ 保存失败，请检查服务器连接');
+}
+
+function loadConfig() {
+  const cfg = state.config;
+  if (!cfg || !Object.keys(cfg).length) return;
+  document.getElementById('cfg-category').value     = cfg.category     || '';
+  document.getElementById('cfg-skus').value         = cfg.skus         || '';
+  document.getElementById('cfg-price').value        = cfg.price        || '';
+  document.getElementById('cfg-roi-threshold').value= cfg.roiThreshold || '1.5';
+  document.getElementById('cfg-emergency-pct').value= cfg.emergencyPct || '10';
+  document.getElementById('cfg-competitors').value  = cfg.competitors  || '';
+  document.getElementById('cfg-sources').value      = cfg.sources      || '';
+  document.getElementById('cfg-pain').value         = cfg.pain         || '';
+  document.getElementById('cfg-current-gmv').value  = cfg.currentGmv  || '';
+  document.getElementById('cfg-current-roi').value  = cfg.currentRoi  || '';
+}
+
+// ─── 任务保存（同步到服务器）────────────────
+async function syncTasks() {
+  await apiPost('tasks', state.tasks);
+}
+
+// ─── 初始化 ──────────────────────────────
+async function init() {
+  updateTopDate();
+  await loadAll();
+  loadConfig();
+  refreshTodayPage();
+  setInterval(updateTopDate, 60000);
+
+  // 月计划字符计数
+  const planContent = document.getElementById('plan-content');
+  if (planContent) planContent.addEventListener('input', updatePlanCharCount);
+
+  // 17:20 提醒
+  setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === 17 && now.getMinutes() === 20) {
+      showToast('⏰ 17:20 数据打卡时间到');
+      document.getElementById('checkin-badge').style.display = 'flex';
+    }
+  }, 60000);
+}
+
+init();
+</script>
+</body>
+</html>
