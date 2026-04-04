@@ -736,7 +736,9 @@
 <div class="topbar">
   <div class="logo">⬡ OPS CENTER</div>
   <div class="topbar-right">
+    <span class="badge badge-yellow" id="mode-indicator">检测中</span>
     <span class="date-chip" id="topbar-date">--</span>
+    <span class="date-chip" id="key-btn" style="cursor:pointer;display:none;color:var(--warn)" onclick="resetApiKey()">🔑 更换Key</span>
     <div class="status-dot"></div>
   </div>
 </div>
@@ -1367,86 +1369,293 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── API 配置 ────────────────────────────────
-// 填入你的阿里云服务器公网IP或域名，末尾不加斜杠
-const API_BASE = 'http://43.103.54.219/api';
+// ════════════════════════════════════════════
+//  运营作战中枢 v3 — 双模式引擎
+//  本地文件模式: AI直连Anthropic，数据存localStorage
+//  云端模式    : 走阿里云服务器，数据持久化
+// ════════════════════════════════════════════
 
-// ─── 状态（内存缓存，数据源是服务器）────────
+// ─── 配置区（两行改完即可）─────────────────
+const SERVER_URL   = 'http://192.227.215.230/api'; // RackNerd服务器
+const DEEPSEEK_KEY = '';  // 本地模式AI：填入DeepSeek API Key（sk-xxxxxxxx）
+
+// ─── 全局状态 ────────────────────────────────
 let state = {
-  config: {},
-  plan: {},
-  tasks: [],
-  dayReports: [],
-  weekReports: [],
-  monthReports: [],
-  intelLog: []
+  config:{}, plan:{}, tasks:[],
+  dayReports:[], weekReports:[], monthReports:[],
+  intelLog:[], experiences:[]
 };
 
-// ─── API 封装 ────────────────────────────────
-async function apiGet(key) {
-  try {
-    const r = await fetch(`${API_BASE}/${key}`);
-    if (!r.ok) throw new Error(r.status);
-    return await r.json();
-  } catch(e) {
-    console.warn(`GET ${key} failed:`, e);
-    return null;
+let MODE = 'local'; // 'local' | 'cloud'
+
+// ─── 模式检测 ────────────────────────────────
+async function detectMode() {
+  if (location.protocol === 'file:' || SERVER_URL.includes('YOUR_SERVER_IP') || !SERVER_URL.startsWith('http')) {
+    MODE = 'local'; return;
   }
+  try {
+    const r = await fetch(SERVER_URL + '/health', { signal: AbortSignal.timeout(3000) });
+    MODE = r.ok ? 'cloud' : 'local';
+  } catch { MODE = 'local'; }
 }
 
-async function apiPost(key, data) {
+function updateModeIndicator() {
+  const el = document.getElementById('mode-indicator');
+  if (!el) return;
+  el.textContent = MODE === 'cloud' ? '☁ 云端' : '◎ 本地';
+  el.className = 'badge ' + (MODE === 'cloud' ? 'badge-green' : 'badge-yellow');
+}
+
+// ─── 本地存储层 ──────────────────────────────
+const LS = 'ops_v3';
+function lsLoad(k) {
+  try { const r = localStorage.getItem(LS+'_'+k); return r ? JSON.parse(r) : null; }
+  catch { return null; }
+}
+function lsSave(k, d) {
+  try { localStorage.setItem(LS+'_'+k, JSON.stringify(d)); }
+  catch(e) { console.warn('localStorage写入失败', e); }
+}
+
+// ─── 云端请求层 ──────────────────────────────
+async function cloudGet(k) {
   try {
-    const r = await fetch(`${API_BASE}/${key}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+    const r = await fetch(SERVER_URL+'/'+k, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch(e) { console.warn('cloudGet', k, e.message); return null; }
+}
+async function cloudPost(k, d) {
+  try {
+    const r = await fetch(SERVER_URL+'/'+k, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(d), signal: AbortSignal.timeout(5000)
     });
     if (!r.ok) throw new Error(r.status);
     return await r.json();
-  } catch(e) {
-    console.warn(`POST ${key} failed:`, e);
-    return null;
+  } catch(e) { console.warn('cloudPost', k, e.message); return null; }
+}
+
+// ─── 统一数据接口 ─────────────────────────────
+async function dataGet(k, def) {
+  if (def === undefined) def = null;
+  if (MODE === 'cloud') {
+    const d = await cloudGet(k);
+    if (d !== null) { lsSave(k, d); return d; }
   }
+  const local = lsLoad(k);
+  return local !== null ? local : def;
+}
+async function dataSet(k, d) {
+  lsSave(k, d);
+  if (MODE === 'cloud') await cloudPost(k, d);
 }
 
-async function apiAI(endpoint, body) {
-  const r = await fetch(`${API_BASE}/ai/${endpoint}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+// ─── 兼容旧接口 ───────────────────────────────
+async function apiGet(k)      { return dataGet(k); }
+async function apiPost(k, d)  { return dataSet(k, d); }
+async function syncTasks()    { await dataSet('tasks', state.tasks); }
+
+// ─── AI调用核心 ──────────────────────────────
+async function callAI(prompt, maxTokens) {
+  if (!maxTokens) maxTokens = 1000;
+
+  if (MODE === 'cloud') {
+    const r = await fetch(SERVER_URL+'/ai/raw', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt: prompt, max_tokens: maxTokens }),
+      signal: AbortSignal.timeout(90000)
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(()=>({}));
+      throw new Error((e.error||'服务器AI调用失败') + ' ' + r.status);
+    }
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    return d.result;
+  }
+
+  // 本地模式：直连DeepSeek（成本低，Key你已经有）
+  if (!DEEPSEEK_KEY || DEEPSEEK_KEY.length < 10) {
+    throw new Error('请在HTML文件顶部的 DEEPSEEK_KEY 变量填入你的DeepSeek API Key');
+  }
+  const r = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization': 'Bearer ' + DEEPSEEK_KEY
+    },
+    body: JSON.stringify({
+      model:'deepseek-chat',
+      max_tokens: maxTokens,
+      messages:[{ role:'user', content: prompt }]
+    })
   });
-  const data = await r.json();
-  if (!r.ok || data.error) throw new Error(data.error || '请求失败');
-  return data.result;
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({}));
+    throw new Error((e.error && e.error.message) || 'DeepSeek API错误 '+r.status);
+  }
+  const d = await r.json();
+  return (d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '';
 }
 
-// ─── 全量加载（页面初始化时）────────────────
+// ─── apiAI：所有AI功能统一入口 ───────────────
+async function apiAI(endpoint, body) {
+  var cfg  = state.config || {};
+  var plan = state.plan   || {};
+  var expNote = cfg.exp_summary ? '\n【该运营者的个人方法论】\n' + cfg.exp_summary + '\n' : '';
+  var tasks   = state.tasks || [];
+  var doneN   = tasks.filter(function(t){return t.done;}).length;
+  var totalN  = tasks.length;
+
+  var prompt = '';
+
+  if (endpoint === 'parse-plan') {
+    prompt = '你是资深电商运营顾问，请将以下月度工作计划解析并优化，生成结构化执行方案。\n\n'
+      + '月份：' + (body.month||'本月') + ' · GMV目标：¥' + (body.gmv||'--')
+      + ' · 千川预算：¥' + (body.budget||'--') + ' · 目标ROI：' + (body.roi||'--') + '\n'
+      + '核心痛点：' + (body.pain||'无') + ' · 重要节点：' + (body.events||'无') + '\n\n'
+      + '原始月计划：\n' + body.content + '\n\n'
+      + '请输出（每周要点不超过4条，每条任务精确到具体动作）：\n\n'
+      + '【第一周核心任务】\n- 任务（P1/P2）：具体动作\n\n'
+      + '【第二周核心任务】\n...\n\n'
+      + '【第三周核心任务】\n...\n\n'
+      + '【第四周核心任务】\n...\n\n'
+      + '【月度风险预警】2条最可能影响目标的风险及应对预案\n\n'
+      + '【今日应立即启动】本月第一天最需要做的1件事\n\n'
+      + '精准务实，拒绝废话。';
+
+  } else if (endpoint === 'checkin') {
+    prompt = '你是资深抖音电商操盘顾问，持续跟进该店铺运营。\n\n'
+      + '店铺背景：类目' + (cfg.category||'未配置') + '，主推' + (cfg.skus||'未配置')
+      + '，价格带' + (cfg.price||'未配置') + '\n'
+      + '本月GMV目标：¥' + (plan.gmv||'--') + '，ROI警戒阈值：' + (cfg.roiThreshold||1.5)
+      + '，当前月累计GMV：¥' + (cfg.currentGmv||'--') + '\n'
+      + expNote + '\n'
+      + '今日日期：' + today() + '\n'
+      + '今日数据：GMV ¥' + body.gmv + ' · ROI ' + body.roi
+      + ' · 消耗 ¥' + (body.spend||'--') + ' · UV ' + (body.uv||'--')
+      + ' · 转化率 ' + (body.cvr||'--') + '%\n'
+      + '任务完成：' + doneN + '/' + totalN + ' 条\n'
+      + '未完成原因：' + (body.uncompleted||'无') + ' · 今日阻碍：' + (body.blocker||'无')
+      + ' · 有效尝试：' + (body.insight||'无') + '\n\n'
+      + '请输出今日复盘报告（4部分，简洁直接）：\n\n'
+      + '【数据诊断】对比月度目标节奏，今日数据是否正常？用数字说话，不超过3句。\n\n'
+      + '【执行评估】任务完成情况？未完成核心卡点？\n\n'
+      + '【明日微调清单】2-3条具体可执行任务，精确到动作级别。\n\n'
+      + '【一句话结论】今天表现，明天最关键一件事。\n\n'
+      + '严禁套话，数字说话。';
+
+  } else if (endpoint === 'week-report') {
+    var rpts = (state.dayReports||[]).slice(0,7);
+    var sumLines = rpts.map(function(r){
+      return r.date+'：GMV ¥'+r.gmv+' · ROI '+r.roi+'\n'+(r.content||'').substring(0,200);
+    }).join('\n\n---\n\n');
+    prompt = '你是资深电商操盘顾问。基于以下一周日报，生成本周复盘报告。\n\n'
+      + sumLines + '\n\n'
+      + '输出（每部分不超过4条）：\n\n'
+      + '【本周数据总结】GMV合计、平均ROI、最佳/最差日及原因\n\n'
+      + '【本周TOP3归因】未达成目标的核心原因，基于数据\n\n'
+      + '【头部玩法对比差距】本周与头部团队的差距点（1-2条）\n\n'
+      + '【下周关键动作】2-3条下周必须执行的具体动作\n\n'
+      + '严禁套话。';
+
+  } else if (endpoint === 'month-report') {
+    var dr = (state.dayReports||[]).slice(0,30);
+    var tgmv = dr.reduce(function(s,r){return s+(parseFloat(r.gmv)||0);},0);
+    var aroi = dr.length ? dr.reduce(function(s,r){return s+(parseFloat(r.roi)||0);},0)/dr.length : 0;
+    var daily = dr.map(function(r){return r.date+' GMV:'+r.gmv+' ROI:'+r.roi;}).join('\n');
+    prompt = '你是资深电商操盘顾问。基于以下月度数据，生成月度复盘报告。\n\n'
+      + '月度计划：GMV目标 ¥'+(plan.gmv||'--')+' · 预算 ¥'+(plan.budget||'--')+' · 目标ROI '+(plan.roi||'--')+'\n'
+      + '核心痛点：'+(plan.pain||'未配置')+'\n\n'
+      + '月度汇总：实际GMV ¥'+Math.round(tgmv).toLocaleString()+' · 平均ROI '+aroi.toFixed(2)+' · 打卡 '+dr.length+' 天\n\n'
+      + '逐日数据：\n'+daily+'\n\n'
+      + '输出：\n'
+      + '【月度达成率全景】完成率？哪个阶段最好/最差？\n'
+      + '【方法论沉淀】✓ 本月跑通了什么 / ✗ 本月踩坑了什么\n'
+      + '【能力差距诊断】对比头部团队，最大短板（1-2条）\n'
+      + '【下月战略建议】2-3条具体动作\n\n'
+      + '严禁套话。';
+
+  } else if (endpoint === 'exp-summary') {
+    prompt = '你是资深电商运营顾问。以下是该运营者的个人实战经验记录：\n\n'
+      + '店铺背景：'+(cfg.category||'未配置')+' · '+(cfg.skus||'未配置')+'\n\n'
+      + '经验记录：\n'+body.experiences+'\n\n'
+      + '请提炼个人方法论：\n\n'
+      + '【已验证的核心打法】（2-4条）格式：打法名称 → 适用场景 → 预期效果\n\n'
+      + '【必须规避的坑】格式：坑的描述 → 触发条件 → 正确做法\n\n'
+      + '【待验证的假设】值得下一步测试的\n\n'
+      + '【综合运营特征】2-3句话描述运营风格和优势。\n\n'
+      + '此摘要将自动注入AI分析背景，确保精准可执行。';
+
+  } else {
+    throw new Error('未知endpoint: ' + endpoint);
+  }
+
+  var result = await callAI(prompt);
+
+  // 本地模式：手动处理数据存储（云端由后端自动完成）
+  if (MODE === 'local') {
+    if (endpoint === 'checkin') {
+      var rpts = await dataGet('day_reports', []);
+      var rec = {
+        date:today(), gmv:body.gmv, roi:body.roi,
+        spend:body.spend, uv:body.uv, cvr:body.cvr,
+        content:result, summary:'GMV ¥'+body.gmv+' · ROI '+body.roi
+      };
+      var idx = rpts.findIndex(function(r){return r.date===today();});
+      if (idx>=0) rpts[idx]=rec; else rpts.unshift(rec);
+      await dataSet('day_reports', rpts);
+      state.dayReports = rpts;
+    }
+    if (endpoint === 'week-report') {
+      var wr = await dataGet('week_reports', []);
+      wr.unshift({ date:today(), content:result });
+      await dataSet('week_reports', wr);
+      state.weekReports = wr;
+    }
+    if (endpoint === 'month-report') {
+      var dr2 = await dataGet('day_reports', []);
+      var tg2 = dr2.reduce(function(s,r){return s+(parseFloat(r.gmv)||0);},0);
+      var ar2 = dr2.length ? dr2.reduce(function(s,r){return s+(parseFloat(r.roi)||0);},0)/dr2.length : 0;
+      var mr = await dataGet('month_reports', []);
+      mr.unshift({
+        date:today(), month:plan.month||today().substring(0,7),
+        gmv:Math.round(tg2), roi:ar2.toFixed(2), content:result
+      });
+      await dataSet('month_reports', mr);
+      state.monthReports = mr;
+    }
+    if (endpoint === 'exp-summary') {
+      var nc = Object.assign({}, state.config, { exp_summary:result, exp_summary_date:today() });
+      state.config = nc;
+      await dataSet('config', nc);
+    }
+  }
+
+  return result;
+}
+
+// ─── 全量加载 ────────────────────────────────
 async function loadAll() {
   showLoading(true);
-  const [config, plan, tasks, dayReports, weekReports, monthReports, intelLog, experiences] = await Promise.all([
-    apiGet('config'),
-    apiGet('plan'),
-    apiGet('tasks'),
-    apiGet('day_reports'),
-    apiGet('week_reports'),
-    apiGet('month_reports'),
-    apiGet('intel_log'),
-    apiGet('experiences'),
-  ]);
-  state.config       = config       || {};
-  state.plan         = plan         || {};
-  state.tasks        = tasks        || [];
-  state.dayReports   = dayReports   || [];
-  state.weekReports  = weekReports  || [];
-  state.monthReports = monthReports || [];
-  state.intelLog     = intelLog     || [];
-  state.experiences  = experiences  || [];
+  var keys = ['config','plan','tasks','day_reports','week_reports','month_reports','intel_log','experiences'];
+  var defs = [{},{},[],[],[],[],[],[]];
+  var results = await Promise.all(keys.map(function(k,i){ return dataGet(k, defs[i]); }));
+  state.config       = results[0] || {};
+  state.plan         = results[1] || {};
+  state.tasks        = results[2] || [];
+  state.dayReports   = results[3] || [];
+  state.weekReports  = results[4] || [];
+  state.monthReports = results[5] || [];
+  state.intelLog     = results[6] || [];
+  state.experiences  = results[7] || [];
   showLoading(false);
 }
 
 function showLoading(on) {
-  // 简单的顶栏状态提示
-  const dot = document.querySelector('.status-dot');
+  var dot = document.querySelector('.status-dot');
   if (dot) dot.style.background = on ? 'var(--warn)' : 'var(--accent)';
 }
 
@@ -1463,9 +1672,12 @@ function fmtNum(n) {
   return Number(n).toLocaleString('zh-CN');
 }
 
-function today() {
+function todayStr() {
   return new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
 }
+
+// 兼容旧代码使用 today()
+const today = todayStr;
 
 function dayOfWeek() {
   const d = ['日','一','二','三','四','五','六'];
@@ -1687,24 +1899,21 @@ async function submitPlan() {
 async function applyPlan() {
   const p = state._pendingPlan;
   if (!p) return;
-
   const planData = {
     month: p.month, gmv: p.gmv, budget: p.budget,
     roi: p.roi, pain: p.pain, events: p.events,
     content: p.content, parsed: p.parsed
   };
   state.plan = planData;
-  await apiPost('plan', planData);
+  await dataSet('plan', planData);
 
-  // 生成初始任务并同步
   state.tasks = [
-    { text: '查看并确认本月计划已正式启动', priority: 'p1', done: false, date: today() },
-    { text: `确认月度GMV目标：¥${fmtNum(p.gmv)}`, priority: 'p1', done: false, date: today() },
-    { text: '情报系统首次运行，获取本周行业动态', priority: 'p2', done: false, date: today() },
+    { text: '查看并确认本月计划已正式启动', priority: 'p1', done: false, date: todayStr() },
+    { text: `确认月度GMV目标：¥${(p.gmv||0).toLocaleString()}`, priority: 'p1', done: false, date: todayStr() },
+    { text: '情报系统首次运行，获取本周行业动态', priority: 'p2', done: false, date: todayStr() },
   ];
   await syncTasks();
-
-  showToast('✓ 月计划已保存到服务器');
+  showToast('✓ 月计划已保存');
   goto('plan-view');
 }
 
@@ -1969,19 +2178,10 @@ async function saveExperience() {
 
   if (!title || !detail) { showToast('请填写标题和详细描述'); return; }
 
-  const entry = {
-    id:        Date.now(),
-    date:      today(),
-    title,
-    detail,
-    category,
-    outcome,
-    condition,
-  };
-
+  const entry = { id: Date.now(), date: todayStr(), title, detail, category, outcome, condition };
   state.experiences = state.experiences || [];
   state.experiences.unshift(entry);
-  await apiPost('experiences', state.experiences);
+  await dataSet('experiences', state.experiences);
 
   clearExpForm();
   renderExpList();
@@ -2047,7 +2247,7 @@ function updateExpStats() {
 
 async function deleteExp(id) {
   state.experiences = (state.experiences || []).filter(e => e.id !== id);
-  await apiPost('experiences', state.experiences);
+  await dataSet('experiences', state.experiences);
   renderExpList();
   updateExpStats();
   showToast('已删除');
@@ -2094,10 +2294,13 @@ async function saveConfig() {
     pain:         document.getElementById('cfg-pain').value,
     currentGmv:   document.getElementById('cfg-current-gmv').value,
     currentRoi:   document.getElementById('cfg-current-roi').value,
+    // 保留已有的exp_summary
+    exp_summary:      state.config.exp_summary || '',
+    exp_summary_date: state.config.exp_summary_date || '',
   };
   state.config = cfg;
-  const ok = await apiPost('config', cfg);
-  showToast(ok ? '✓ 配置已保存到服务器' : '⚠ 保存失败，请检查服务器连接');
+  const ok = await dataSet('config', cfg);
+  showToast(ok ? '✓ 配置已保存' : '⚠ 保存失败');
 }
 
 function loadConfig() {
@@ -2117,22 +2320,34 @@ function loadConfig() {
 
 // ─── 任务保存（同步到服务器）────────────────
 async function syncTasks() {
-  await apiPost('tasks', state.tasks);
+  await dataSet('tasks', state.tasks);
 }
 
 // ─── 初始化 ──────────────────────────────
 async function init() {
   updateTopDate();
+
+  // 顶栏显示运行模式
+  const modeBadge = document.createElement('span');
+  modeBadge.className = 'date-chip';
+  modeBadge.style.color = IS_LOCAL ? 'var(--warn)' : 'var(--accent)';
+  modeBadge.textContent = IS_LOCAL ? '本地模式' : '云端模式';
+  document.querySelector('.topbar-right').prepend(modeBadge);
+
   await loadAll();
   loadConfig();
   refreshTodayPage();
-  setInterval(updateTopDate, 60000);
+
+  // 本地模式：检查API Key
+  if (IS_LOCAL) checkLocalKey();
 
   // 月计划字符计数
   const planContent = document.getElementById('plan-content');
   if (planContent) planContent.addEventListener('input', updatePlanCharCount);
 
-  // 17:20 提醒
+  setInterval(updateTopDate, 60000);
+
+  // 17:20 打卡提醒
   setInterval(() => {
     const now = new Date();
     if (now.getHours() === 17 && now.getMinutes() === 20) {
@@ -2143,6 +2358,7 @@ async function init() {
 }
 
 init();
+
 </script>
 </body>
 </html>
