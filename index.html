@@ -465,6 +465,14 @@
     </div>
     <hr class="nav-divider">
     <div class="nav-section">
+      <div class="nav-label">洞察</div>
+      <div class="nav-item" onclick="goto('insight')"><span class="nav-icon">◉</span> 每日洞察</div>
+      <div class="nav-item" onclick="goto('competitor')"><span class="nav-icon">⊛</span> 竞品追踪</div>
+      <div class="nav-item" onclick="goto('material')"><span class="nav-icon">◈</span> 素材效能</div>
+      <div class="nav-item" onclick="goto('decision')"><span class="nav-icon">⬡</span> 战略决策库</div>
+    </div>
+    <hr class="nav-divider">
+    <div class="nav-section">
       <div class="nav-label">配置</div>
       <div class="nav-item" onclick="goto('experience')"><span class="nav-icon">◆</span> 经验教训库</div>
       <div class="nav-item" onclick="goto('config')"><span class="nav-icon">⚙</span> 店铺配置</div>
@@ -807,6 +815,235 @@
       </div>
     </div>
 
+
+    <!-- 每日洞察 -->
+    <div class="page" id="page-insight">
+      <div class="page-header">
+        <div><div class="page-title">每日洞察融合分析</div><div class="page-sub">输入今日观察 · AI去噪提炼信号 · 修订工作计划</div></div>
+        <span class="badge badge-purple">实时融合</span>
+      </div>
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <div class="card-title">今日输入</div>
+            <div class="form-group"><label>📈 市场观察（价格/竞品/平台异动）</label><textarea id="ins-market" style="min-height:80px" placeholder="例：竞品A主图改版，价格下调15%；平台推出新流量扶持政策"></textarea></div>
+            <div class="form-group"><label>💡 灵感假设（想测试但未验证的想法）</label><textarea id="ins-idea" style="min-height:70px" placeholder="例：试试把开头换成痛点场景，感觉CTR会提升"></textarea></div>
+            <div class="form-group"><label>🔧 执行摩擦（今天卡在哪里）</label><textarea id="ins-friction" style="min-height:70px" placeholder="例：素材审核被拒2次，原因不明；设计排期拖延"></textarea></div>
+            <div class="form-group"><label>🧠 个人状态（影响判断的主观因素）</label>
+              <select id="ins-mood">
+                <option value="">不填写</option>
+                <option value="状态很好，判断清晰">🟢 状态很好</option>
+                <option value="状态一般，需要二次确认重要决策">🟡 状态一般</option>
+                <option value="状态较差，高压疲惫，今日决策需谨慎">🔴 高压疲惫</option>
+              </select>
+            </div>
+            <div class="form-group"><label>📝 其他补充</label><textarea id="ins-extra" style="min-height:60px" placeholder="任何其他想法、发现、疑问..."></textarea></div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="submitInsight()">◉ 融合分析 · 去噪提炼</button>
+              <button class="btn btn-secondary" onclick="clearInsight()">清空</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">GMV预测预警</div>
+            <div id="gmv-forecast-display">
+              <div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">点击加载预测</div></div>
+            </div>
+            <div class="btn-row" style="margin-top:12px">
+              <button class="btn btn-secondary" style="width:100%" onclick="loadGmvForecast()">↻ 刷新预测</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">历史洞察记录</div>
+            <div id="insight-history">
+              <div class="empty-state"><div class="empty-icon">◉</div><div class="empty-text">暂无历史记录</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="insight-result" style="display:none;margin-top:16px">
+        <div class="card">
+          <div class="card-title">融合分析结果</div>
+          <div class="ai-output" id="insight-output"></div>
+          <div class="btn-row">
+            <button class="btn btn-secondary" onclick="copyInsight()">复制全文</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 竞品追踪 -->
+    <div class="page" id="page-competitor">
+      <div class="page-header">
+        <div><div class="page-title">竞品追踪分析</div><div class="page-sub">录入竞品动态 · AI提炼用户痛点与机会 · 自动注入决策库</div></div>
+        <span class="badge badge-red" id="comp-count-badge">0 条</span>
+      </div>
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <div class="card-title">录入竞品动态</div>
+            <div class="form-group"><label>竞品名称</label><input type="text" id="comp-name" placeholder="例：一只鱼官方旗舰店"></div>
+            <div class="form-group"><label>价格/SKU变动</label><textarea id="comp-price" style="min-height:70px" placeholder="例：主推款从¥259降至¥219，新增¥99入门款"></textarea></div>
+            <div class="form-group"><label>活动/优惠配置</label><textarea id="comp-promo" style="min-height:70px" placeholder="例：参加平台满减，叠加店铺券最高减50"></textarea></div>
+            <div class="form-group"><label>商品图/详情图风格</label><textarea id="comp-visual" style="min-height:80px" placeholder="例：主图改为白底极简风，突出材质特写；详情页增加穿搭场景图"></textarea></div>
+            <div class="form-group"><label>用户评价摘录（直接粘贴）</label><textarea id="comp-reviews" style="min-height:100px" placeholder="粘贴近期评价，AI自动提炼痛点和机会点"></textarea></div>
+            <div class="form-group"><label>其他观察</label><textarea id="comp-notes" style="min-height:60px" placeholder="直播场次、达人合作、新品上架等"></textarea></div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="submitCompetitor()">⊛ 分析竞品</button>
+              <button class="btn btn-secondary" onclick="clearCompetitor()">清空</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div id="competitor-result" style="display:none">
+            <div class="card">
+              <div class="card-title">竞品分析报告</div>
+              <div class="ai-output" id="competitor-output"></div>
+              <div class="btn-row">
+                <button class="btn btn-secondary" onclick="copyComp()">复制</button>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:0">
+            <div class="card-title">历史竞品记录</div>
+            <div id="comp-history">
+              <div class="empty-state"><div class="empty-icon">⊛</div><div class="empty-text">暂无竞品记录</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 素材效能 -->
+    <div class="page" id="page-material">
+      <div class="page-header">
+        <div><div class="page-title">素材效能追踪</div><div class="page-sub">录入素材数据 · AI诊断效能 · 提炼复用方法论</div></div>
+        <span class="badge badge-blue" id="mat-count-badge">0 条</span>
+      </div>
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <div class="card-title">录入素材数据</div>
+            <div class="form-group"><label>素材标题/描述</label><input type="text" id="mat-title" placeholder="例：穿搭场景-白色运动鞋-通勤风"></div>
+            <div class="form-group"><label>素材类型</label>
+              <select id="mat-type">
+                <option value="痛点解决">痛点解决</option>
+                <option value="产品展示">产品展示</option>
+                <option value="场景种草">场景种草</option>
+                <option value="对比测评">对比测评</option>
+                <option value="直播切片">直播切片</option>
+                <option value="用户证言">用户证言</option>
+              </select>
+            </div>
+            <div class="grid2" style="gap:10px">
+              <div class="form-group"><label>播放量</label><input type="number" id="mat-views" placeholder="例：45000"></div>
+              <div class="form-group"><label>点击量</label><input type="number" id="mat-clicks" placeholder="例：1200"></div>
+              <div class="form-group"><label>成交单数</label><input type="number" id="mat-orders" placeholder="例：35"></div>
+              <div class="form-group"><label>广告消耗(¥)</label><input type="number" id="mat-spend" placeholder="例：800"></div>
+            </div>
+            <div class="form-group"><label>带来GMV(¥)</label><input type="number" id="mat-gmv" placeholder="例：4500"></div>
+            <div class="form-group"><label>内容要点描述</label><textarea id="mat-desc" style="min-height:80px" placeholder="例：开头3秒用脚痛场景引入，中间展示支撑结构，结尾价格锚定"></textarea></div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="submitMaterial()">◈ 分析效能</button>
+              <button class="btn btn-secondary" onclick="clearMaterial()">清空</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div id="material-result" style="display:none">
+            <div class="card" style="margin-bottom:16px">
+              <div class="card-title">效能分析报告</div>
+              <div class="ai-output" id="material-output"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">素材记录</div>
+            <div id="mat-stats" style="display:flex;gap:16px;padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:12px">
+              <div style="text-align:center"><div style="font-family:var(--mono);font-size:18px;color:var(--success)" id="mat-avg-roi">--</div><div style="font-size:10px;color:var(--text3)">平均ROI</div></div>
+              <div style="text-align:center"><div style="font-family:var(--mono);font-size:18px;color:var(--accent2)" id="mat-avg-ctr">--</div><div style="font-size:10px;color:var(--text3)">平均CTR%</div></div>
+              <div style="text-align:center"><div style="font-family:var(--mono);font-size:18px;color:var(--text)" id="mat-total">0</div><div style="font-size:10px;color:var(--text3)">总素材数</div></div>
+            </div>
+            <div id="mat-list">
+              <div class="empty-state"><div class="empty-icon">◈</div><div class="empty-text">暂无素材记录</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 战略决策库 -->
+    <div class="page" id="page-decision">
+      <div class="page-header">
+        <div><div class="page-title">战略决策库</div><div class="page-sub">沉淀重要结论 · 追踪执行状态 · AI定期复审</div></div>
+        <span class="badge badge-green" id="dec-count-badge">0 条</span>
+      </div>
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <div class="card-title">新增战略决策</div>
+            <div class="form-group"><label>决策标题</label><input type="text" id="dec-title" placeholder="例：主图风格改为场景化极简风"></div>
+            <div class="form-group"><label>类别</label>
+              <select id="dec-category">
+                <option value="视觉策略">视觉策略</option>
+                <option value="投流策略">投流策略</option>
+                <option value="选品定价">选品定价</option>
+                <option value="内容方向">内容方向</option>
+                <option value="竞品应对">竞品应对</option>
+                <option value="用户运营">用户运营</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <div class="form-group"><label>优先级</label>
+              <select id="dec-priority">
+                <option value="P1">P1 紧急</option>
+                <option value="P2" selected>P2 重要</option>
+                <option value="P3">P3 跟进</option>
+              </select>
+            </div>
+            <div class="form-group"><label>背景（为什么做这个决策）</label><textarea id="dec-background" style="min-height:80px" placeholder="例：人群画像分析显示主要买家为25-35岁女性，偏好简洁通勤风格"></textarea></div>
+            <div class="form-group"><label>核心结论</label><textarea id="dec-conclusion" style="min-height:70px" placeholder="例：主图需要从产品展示图改为通勤场景图，预计转化率提升10-15%"></textarea></div>
+            <div class="form-group"><label>执行选项（每行一个选项，可留空）</label><textarea id="dec-options" style="min-height:80px" placeholder="选项A：极简白底+产品特写&#10;选项B：通勤场景+人物出镜&#10;选项C：A/B测试两套方案"></textarea></div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="saveDecision()">⬡ 存入决策库</button>
+              <button class="btn btn-secondary" onclick="clearDecision()">清空</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">AI决策复审</div>
+            <p style="font-size:12px;color:var(--text2);margin-bottom:12px">基于今日情报和当前数据，AI重新评估所有进行中的决策优先级。</p>
+            <button class="btn btn-primary" style="width:100%" onclick="runDecisionReview()">⬡ 立即复审决策</button>
+            <div id="decision-review-output" style="display:none;margin-top:14px">
+              <div class="ai-output" id="decision-review-text" style="font-size:12px;line-height:1.8"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">决策状态统计</div>
+            <div style="display:flex;gap:16px;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:12px">
+              <div style="text-align:center"><div style="font-family:var(--mono);font-size:18px;color:var(--warn)" id="dec-pending">0</div><div style="font-size:10px;color:var(--text3)">待执行</div></div>
+              <div style="text-align:center"><div style="font-family:var(--mono);font-size:18px;color:var(--accent)">  <span id="dec-inprogress">0</span></div><div style="font-size:10px;color:var(--text3)">进行中</div></div>
+              <div style="text-align:center"><div style="font-family:var(--mono);font-size:18px;color:var(--success)" id="dec-verified">0</div><div style="font-size:10px;color:var(--text3)">已验证</div></div>
+              <div style="text-align:center"><div style="font-family:var(--mono);font-size:18px;color:var(--text3)" id="dec-dropped">0</div><div style="font-size:10px;color:var(--text3)">已放弃</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:4px">
+        <div class="card-title">决策列表</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterDecisions('all')">全部</button>
+          <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterDecisions('待执行')">待执行</button>
+          <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterDecisions('进行中')">进行中</button>
+          <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterDecisions('已验证')">已验证</button>
+          <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterDecisions('已放弃')">已放弃</button>
+        </div>
+        <div id="decision-list">
+          <div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-text">还没有战略决策<br>把重要结论沉淀下来，持续追踪落地</div></div>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -1388,6 +1625,285 @@ async function init(){
     }
   },60000);
   if(MODE==='local'&&!DEEPSEEK_KEY) setTimeout(()=>showToast('本地模式：请填入 DEEPSEEK_KEY 启用AI'),1500);
+  if(MODE==='cloud') { loadInsightHistory(); loadCompHistory(); loadMatList(); loadDecisions(); loadGmvForecast(); }
+}
+
+
+// ─── 每日洞察 ────────────────────────────────
+async function submitInsight() {
+  const btn = event.target; btn.textContent = '分析中...'; btn.disabled = true;
+  try {
+    const r = await fetch(SERVER_URL + '/ai/insight', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        market: document.getElementById('ins-market').value,
+        idea: document.getElementById('ins-idea').value,
+        friction: document.getElementById('ins-friction').value,
+        mood: document.getElementById('ins-mood').value,
+        extra: document.getElementById('ins-extra').value
+      })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    document.getElementById('insight-result').style.display = 'block';
+    document.getElementById('insight-output').textContent = d.result;
+    await loadInsightHistory();
+    showToast('分析完成');
+  } catch(e) {
+    document.getElementById('insight-result').style.display = 'block';
+    document.getElementById('insight-output').textContent = '⚠ ' + e.message;
+  }
+  btn.textContent = '◉ 融合分析 · 去噪提炼'; btn.disabled = false;
+}
+function clearInsight() {
+  ['ins-market','ins-idea','ins-friction','ins-extra'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ins-mood').value = '';
+  document.getElementById('insight-result').style.display = 'none';
+}
+function copyInsight() { navigator.clipboard?.writeText(document.getElementById('insight-output').textContent).then(()=>showToast('已复制')); }
+async function loadInsightHistory() {
+  try {
+    const r = await fetch(SERVER_URL + '/insight_log'); const d = await r.json();
+    const container = document.getElementById('insight-history');
+    if (!d || !d.length) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">◉</div><div class="empty-text">暂无历史记录</div></div>'; return; }
+    container.innerHTML = d.slice(0,5).map((item,i) => `
+      <div class="history-item">
+        <div class="history-header" onclick="toggleHistory('ins-body-${i}')">
+          <div class="history-title">${item.date} 洞察分析</div>
+        </div>
+        <div class="history-body" id="ins-body-${i}">${item.analysis||''}</div>
+      </div>`).join('');
+  } catch(e) {}
+}
+async function loadGmvForecast() {
+  const container = document.getElementById('gmv-forecast-display');
+  container.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px">加载中...</div>';
+  try {
+    const r = await fetch(SERVER_URL + '/ai/gmv-forecast'); const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    const data = d.data || {};
+    container.innerHTML = `
+      <div class="metric-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:12px">
+        <div class="metric-card"><div class="metric-label">完成率</div><div class="metric-value ${data.completion_pct>=80?'good':data.completion_pct>=60?'warn':'bad'}">${data.completion_pct||0}%</div></div>
+        <div class="metric-card"><div class="metric-label">剩余天数</div><div class="metric-value">${data.days_left||0}天</div></div>
+        <div class="metric-card"><div class="metric-label">基础预测GMV</div><div class="metric-value" style="font-size:14px">¥${(data.forecast_base||0).toLocaleString()}</div></div>
+        <div class="metric-card"><div class="metric-label">每日需达成</div><div class="metric-value" style="font-size:14px">¥${(data.daily_needed||0).toLocaleString()}</div></div>
+      </div>
+      <div class="summary-block has-content" style="font-size:12px;min-height:60px">${d.result||''}</div>`;
+  } catch(e) { container.innerHTML = '<div style="color:var(--danger);font-size:12px;padding:8px">加载失败：' + e.message + '</div>'; }
+}
+
+// ─── 竞品追踪 ────────────────────────────────
+async function submitCompetitor() {
+  const name = document.getElementById('comp-name').value.trim();
+  if (!name) { showToast('请填写竞品名称'); return; }
+  const btn = event.target; btn.textContent = '分析中...'; btn.disabled = true;
+  try {
+    const r = await fetch(SERVER_URL + '/ai/competitor', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name, price: document.getElementById('comp-price').value,
+        promo: document.getElementById('comp-promo').value,
+        visual: document.getElementById('comp-visual').value,
+        reviews: document.getElementById('comp-reviews').value,
+        notes: document.getElementById('comp-notes').value
+      })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    document.getElementById('competitor-result').style.display = 'block';
+    document.getElementById('competitor-output').textContent = d.result;
+    await loadCompHistory();
+    showToast('竞品分析完成');
+  } catch(e) {
+    document.getElementById('competitor-result').style.display = 'block';
+    document.getElementById('competitor-output').textContent = '⚠ ' + e.message;
+  }
+  btn.textContent = '⊛ 分析竞品'; btn.disabled = false;
+}
+function clearCompetitor() {
+  ['comp-name','comp-price','comp-promo','comp-visual','comp-reviews','comp-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('competitor-result').style.display='none';
+}
+function copyComp() { navigator.clipboard?.writeText(document.getElementById('competitor-output').textContent).then(()=>showToast('已复制')); }
+async function loadCompHistory() {
+  try {
+    const r = await fetch(SERVER_URL + '/competitor_log'); const d = await r.json();
+    const container = document.getElementById('comp-history');
+    document.getElementById('comp-count-badge').textContent = (d||[]).length + ' 条';
+    if (!d||!d.length) { container.innerHTML='<div class="empty-state"><div class="empty-icon">⊛</div><div class="empty-text">暂无竞品记录</div></div>'; return; }
+    container.innerHTML = d.slice(0,10).map((item,i)=>`
+      <div class="history-item">
+        <div class="history-header" onclick="toggleHistory('comp-body-${i}')">
+          <div><div class="history-title">${item.name}</div><div class="history-date">${item.date}</div></div>
+        </div>
+        <div class="history-body" id="comp-body-${i}">${item.analysis||''}</div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+// ─── 素材效能 ────────────────────────────────
+async function submitMaterial() {
+  const title = document.getElementById('mat-title').value.trim();
+  if (!title) { showToast('请填写素材标题'); return; }
+  const btn = event.target; btn.textContent = '分析中...'; btn.disabled = true;
+  try {
+    const r = await fetch(SERVER_URL + '/ai/material', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title, type: document.getElementById('mat-type').value,
+        views: document.getElementById('mat-views').value,
+        clicks: document.getElementById('mat-clicks').value,
+        orders: document.getElementById('mat-orders').value,
+        spend: document.getElementById('mat-spend').value,
+        gmv: document.getElementById('mat-gmv').value,
+        description: document.getElementById('mat-desc').value
+      })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    document.getElementById('material-result').style.display = 'block';
+    document.getElementById('material-output').textContent = d.result;
+    await loadMatList();
+    showToast('效能分析完成');
+  } catch(e) {
+    document.getElementById('material-result').style.display = 'block';
+    document.getElementById('material-output').textContent = '⚠ ' + e.message;
+  }
+  btn.textContent = '◈ 分析效能'; btn.disabled = false;
+}
+function clearMaterial() {
+  ['mat-title','mat-views','mat-clicks','mat-orders','mat-spend','mat-gmv','mat-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('material-result').style.display='none';
+}
+async function loadMatList() {
+  try {
+    const r = await fetch(SERVER_URL + '/material_log'); const d = await r.json();
+    document.getElementById('mat-count-badge').textContent = (d||[]).length + ' 条';
+    document.getElementById('mat-total').textContent = (d||[]).length;
+    if (d && d.length) {
+      const avgRoi = d.reduce((s,m)=>s+parseFloat(m.roi||0),0)/d.length;
+      const avgCtr = d.reduce((s,m)=>s+parseFloat(m.ctr||0),0)/d.length;
+      document.getElementById('mat-avg-roi').textContent = avgRoi.toFixed(2);
+      document.getElementById('mat-avg-ctr').textContent = avgCtr.toFixed(2)+'%';
+    }
+    const container = document.getElementById('mat-list');
+    if (!d||!d.length) { container.innerHTML='<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-text">暂无素材记录</div></div>'; return; }
+    container.innerHTML = d.slice(0,20).map((m,i)=>`
+      <div class="task-item">
+        <div class="task-text">
+          <div style="font-weight:500;margin-bottom:2px">${m.title}</div>
+          <div style="font-size:11px;color:var(--text3)">${m.date} · ${m.type}</div>
+        </div>
+        <span class="badge ${parseFloat(m.roi)>=1.5?'badge-green':parseFloat(m.roi)>0?'badge-yellow':'badge-red'}">ROI ${m.roi}</span>
+        <span class="badge badge-blue">CTR ${m.ctr}%</span>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+// ─── 战略决策库 ──────────────────────────────
+let decisionFilter = 'all';
+let decisionsCache = [];
+async function saveDecision() {
+  const title = document.getElementById('dec-title').value.trim();
+  const conclusion = document.getElementById('dec-conclusion').value.trim();
+  if (!title || !conclusion) { showToast('请填写标题和核心结论'); return; }
+  const optionsRaw = document.getElementById('dec-options').value.trim();
+  const options = optionsRaw ? optionsRaw.split('
+').filter(o=>o.trim()) : [];
+  try {
+    const r = await fetch(SERVER_URL.replace('/api','') + '/api/decision', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title, conclusion,
+        background: document.getElementById('dec-background').value,
+        options, category: document.getElementById('dec-category').value,
+        priority: document.getElementById('dec-priority').value,
+        status: '待执行'
+      })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error('保存失败');
+    clearDecision(); await loadDecisions(); showToast('✓ 已存入决策库');
+  } catch(e) { showToast('保存失败：' + e.message); }
+}
+function clearDecision() {
+  ['dec-title','dec-background','dec-conclusion','dec-options'].forEach(id=>document.getElementById(id).value='');
+}
+async function loadDecisions() {
+  try {
+    const r = await fetch(SERVER_URL.replace('/api','') + '/api/decision');
+    decisionsCache = await r.json() || [];
+    renderDecisionList(); updateDecisionStats();
+  } catch(e) {}
+}
+function filterDecisions(f) { decisionFilter = f; renderDecisionList(); }
+function renderDecisionList() {
+  const container = document.getElementById('decision-list');
+  const filtered = decisionFilter === 'all' ? decisionsCache : decisionsCache.filter(d=>d.status===decisionFilter);
+  document.getElementById('dec-count-badge').textContent = decisionsCache.length + ' 条';
+  if (!filtered.length) { container.innerHTML='<div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-text">暂无决策记录</div></div>'; return; }
+  const statusColor = {'待执行':'badge-yellow','进行中':'badge-green','已验证':'badge-blue','已放弃':'badge-red'};
+  const priorityColor = {'P1':'tag-p1','P2':'tag-p2','P3':'tag-p3'};
+  container.innerHTML = filtered.map(d=>`
+    <div class="exp-item">
+      <div class="exp-header">
+        <span class="badge ${priorityColor[d.priority]||'tag-p2'}">${d.priority}</span>
+        <span class="badge badge-purple">${d.category}</span>
+        <strong style="font-size:13px;color:var(--text)">${d.title}</strong>
+        <span class="badge ${statusColor[d.status]||'badge-yellow'}">${d.status}</span>
+        <span class="exp-date">${d.date}</span>
+      </div>
+      <div class="exp-content">${d.conclusion}</div>
+      ${d.options&&d.options.length ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${d.options.map((o,i)=>`<span class="badge ${d.chosen_option===o?'badge-green':'badge-blue'}" style="cursor:pointer" onclick="chooseOption(${d.id},'${o.replace(/'/g,"\'")}','${d.status}')">${o}</span>`).join('')}</div>` : ''}
+      ${d.progress_notes&&d.progress_notes.length ? `<div class="exp-outcome">${d.progress_notes[d.progress_notes.length-1].date}：${d.progress_notes[d.progress_notes.length-1].note}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        ${['待执行','进行中','已验证','已放弃'].map(s=>`<button class="btn btn-secondary" style="font-size:10px;padding:3px 8px" onclick="updateDecStatus(${d.id},'${s}')">${s}</button>`).join('')}
+        <button class="btn btn-danger" style="font-size:10px;padding:3px 8px;margin-left:auto" onclick="deleteDecision(${d.id})">删除</button>
+      </div>
+    </div>`).join('');
+}
+function updateDecisionStats() {
+  document.getElementById('dec-pending').textContent = decisionsCache.filter(d=>d.status==='待执行').length;
+  document.getElementById('dec-inprogress').textContent = decisionsCache.filter(d=>d.status==='进行中').length;
+  document.getElementById('dec-verified').textContent = decisionsCache.filter(d=>d.status==='已验证').length;
+  document.getElementById('dec-dropped').textContent = decisionsCache.filter(d=>d.status==='已放弃').length;
+}
+async function updateDecStatus(id, status) {
+  try {
+    await fetch(SERVER_URL.replace('/api','') + '/api/decision/' + id, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status})
+    });
+    await loadDecisions(); showToast('状态已更新');
+  } catch(e) { showToast('更新失败'); }
+}
+async function chooseOption(id, option, currentStatus) {
+  try {
+    await fetch(SERVER_URL.replace('/api','') + '/api/decision/' + id, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({chosen_option: option, status: currentStatus==='待执行'?'进行中':currentStatus})
+    });
+    await loadDecisions(); showToast('已选择方案：' + option);
+  } catch(e) { showToast('操作失败'); }
+}
+async function deleteDecision(id) {
+  try {
+    await fetch(SERVER_URL.replace('/api','') + '/api/decision/' + id + '/delete', {method:'POST'});
+    await loadDecisions(); showToast('已删除');
+  } catch(e) { showToast('删除失败'); }
+}
+async function runDecisionReview() {
+  const btn = event.target; btn.textContent = '复审中...'; btn.disabled = true;
+  try {
+    const r = await fetch(SERVER_URL + '/ai/decision-review', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    document.getElementById('decision-review-output').style.display = 'block';
+    document.getElementById('decision-review-text').textContent = d.result;
+    showToast('决策复审完成');
+  } catch(e) { showToast('复审失败：' + e.message); }
+  btn.textContent = '⬡ 立即复审决策'; btn.disabled = false;
 }
 
 init();
