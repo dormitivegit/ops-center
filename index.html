@@ -1809,8 +1809,7 @@ async function saveDecision() {
   const conclusion = document.getElementById('dec-conclusion').value.trim();
   if (!title || !conclusion) { showToast('请填写标题和核心结论'); return; }
   const optionsRaw = document.getElementById('dec-options').value.trim();
-  const options = optionsRaw ? optionsRaw.split('
-').filter(o=>o.trim()) : [];
+  const options = optionsRaw ? optionsRaw.split('\n').filter(o=>o.trim()) : [];
   try {
     const r = await fetch(SERVER_URL.replace('/api','') + '/api/decision', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
