@@ -1465,8 +1465,9 @@ function renderWeekGrid() {
 
 function renderIntelLog() {
   const container=document.getElementById('intel-log');
-  if (!state.intelLog||state.intelLog.length===0) { container.innerHTML='<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">暂无情报调整记录</div></div>'; return; }
-  container.innerHTML=state.intelLog.map(item=>`<div class="task-item"><span class="badge badge-purple" style="flex-shrink:0">${item.date}</span><div class="task-text" style="margin-left:8px">${item.suggestion}</div><span class="badge badge-yellow">${item.tag}</span></div>`).join('');
+  const intelArr = Array.isArray(state.intelLog) ? state.intelLog : (state.intelLog && state.intelLog.date ? [state.intelLog] : []);
+  if (!intelArr||intelArr.length===0) { container.innerHTML='<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">暂无情报调整记录</div></div>'; return; }
+  container.innerHTML=intelArr.map(item=>`<div class="task-item"><span class="badge badge-purple" style="flex-shrink:0">${item.date}</span><div class="task-text" style="margin-left:8px">${item.suggestion}</div><span class="badge badge-yellow">${item.tag}</span></div>`).join('');
 }
 
 // ─── 日/周/月报 ──────────────────────────────
