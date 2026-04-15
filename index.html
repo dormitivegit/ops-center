@@ -1809,10 +1809,19 @@ async function compToDecision() {
   const compName = document.getElementById('comp-select-name').value || '竞品';
   if (!analysis) { showToast('暂无分析内容'); return; }
 
-  // 提取战略决策建议部分
+  // 提取各关键板块
   const lines = analysis.split('\n');
-  const decisionLine = lines.find(l => l.includes('📌') || l.includes('战略决策建议'));
+  const findSection = (keyword) => {
+    const idx = lines.findIndex(l => l.includes(keyword));
+    if (idx < 0) return '';
+    return lines.slice(idx, idx + 8).join('\n').substring(0, 500);
+  };
+  const decisionLine = lines.find(l => l.includes('📌')) || '';
   const conclusion = decisionLine ? decisionLine.replace(/📌|\[|\]/g, '').trim() : '基于竞品分析的战略结论';
+  const actionPlan = findSection('行动建议清单');
+  const threat = findSection('威胁评级');
+  const fullBackground = ('【竞品】' + compName + '\n\n' + findSection('竞品整体定位') + '\n\n' + threat).substring(0, 800);
+  const fullConclusion = (conclusion + '\n\n' + actionPlan).substring(0, 800);
 
   try {
     const r = await fetch(SERVER_URL + '/decision', {
@@ -1821,8 +1830,8 @@ async function compToDecision() {
         title: '竞品分析：' + compName + ' · ' + new Date().toLocaleDateString('zh-CN'),
         category: '竞品应对',
         priority: 'P1',
-        background: '基于' + compName + '竞品深度分析',
-        conclusion: conclusion.substring(0, 200),
+        background: fullBackground,
+        conclusion: fullConclusion,
         options: ['立即响应威胁', '攻击竞品弱点', '差异化突围'],
         status: '待执行'
       })
