@@ -1648,7 +1648,7 @@ let competitorConfigs = [];
 
 async function loadCompetitorConfigs() {
   try {
-    const r = await fetch(SERVER_URL.replace('/api','') + '/api/competitor_config');
+    const r = await fetch(SERVER_URL + '/competitor_config');
     competitorConfigs = await r.json() || [];
     renderCompConfigList();
     updateCompSelect();
@@ -1700,7 +1700,7 @@ async function removeCompetitorConfig(idx) {
 
 async function saveCompetitorConfigs() {
   try {
-    await fetch(SERVER_URL.replace('/api','') + '/api/competitor_config', {
+    await fetch(SERVER_URL + '/competitor_config', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(competitorConfigs)
     });
@@ -1815,7 +1815,7 @@ async function compToDecision() {
   const conclusion = decisionLine ? decisionLine.replace(/📌|\[|\]/g, '').trim() : '基于竞品分析的战略结论';
 
   try {
-    const r = await fetch(SERVER_URL.replace('/api','') + '/api/decision', {
+    const r = await fetch(SERVER_URL + '/decision', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         title: '竞品分析：' + compName + ' · ' + new Date().toLocaleDateString('zh-CN'),
@@ -2015,7 +2015,7 @@ async function saveDecision() {
   const optionsRaw = document.getElementById('dec-options').value.trim();
   const options = optionsRaw ? optionsRaw.split('\n').filter(o=>o.trim()) : [];
   try {
-    const r = await fetch(SERVER_URL.replace('/api','') + '/api/decision', {
+    const r = await fetch(SERVER_URL + '/decision', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         title, conclusion,
@@ -2035,7 +2035,7 @@ function clearDecision() {
 }
 async function loadDecisions() {
   try {
-    const r = await fetch(SERVER_URL.replace('/api','') + '/api/decision');
+    const r = await fetch(SERVER_URL + '/decision');
     decisionsCache = await r.json() || [];
     renderDecisionList(); updateDecisionStats();
   } catch(e) {}
@@ -2074,7 +2074,7 @@ function updateDecisionStats() {
 }
 async function updateDecStatus(id, status) {
   try {
-    await fetch(SERVER_URL.replace('/api','') + '/api/decision/' + id, {
+    await fetch(SERVER_URL + '/decision/' + id, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({status})
     });
@@ -2083,7 +2083,7 @@ async function updateDecStatus(id, status) {
 }
 async function chooseOption(id, option, currentStatus) {
   try {
-    await fetch(SERVER_URL.replace('/api','') + '/api/decision/' + id, {
+    await fetch(SERVER_URL + '/decision/' + id, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({chosen_option: option, status: currentStatus==='待执行'?'进行中':currentStatus})
     });
@@ -2092,7 +2092,7 @@ async function chooseOption(id, option, currentStatus) {
 }
 async function deleteDecision(id) {
   try {
-    await fetch(SERVER_URL.replace('/api','') + '/api/decision/' + id + '/delete', {method:'POST'});
+    await fetch(SERVER_URL + '/decision/' + id + '/delete', {method:'POST'});
     await loadDecisions(); showToast('已删除');
   } catch(e) { showToast('删除失败'); }
 }
