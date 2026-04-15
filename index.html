@@ -893,6 +893,19 @@
       </div>
     </div>
 
+      <!-- 今日情报速览 -->
+      <div class="card" style="margin-top:16px" id="intel-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleIntel()">
+          <div class="card-title" style="margin:0">📡 今日情报速览 <span style="font-size:11px;color:var(--muted);font-weight:400" id="intel-date-badge"></span></div>
+          <span style="font-size:12px;color:var(--accent)" id="intel-toggle-btn">▼ 展开</span>
+        </div>
+        <div id="intel-content" style="display:none;margin-top:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="intel-grid">
+            <div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">加载中...</div></div>
+          </div>
+        </div>
+      </div>
+
     <!-- 竞品追踪 -->
     <div class="page" id="page-competitor">
       <div class="page-header">
@@ -1925,6 +1938,50 @@ async function compToDecision() {
     if (d.ok) { showToast('✓ 已存入战略决策库'); await loadDecisions(); }
     else throw new Error('保存失败');
   } catch(e) { showToast('存入失败：' + e.message); }
+}
+
+
+// ─── 今日情报速览 ────────────────────────────
+let intelExpanded = false;
+
+function toggleIntel() {
+  intelExpanded = !intelExpanded;
+  document.getElementById('intel-content').style.display = intelExpanded ? 'block' : 'none';
+  document.getElementById('intel-toggle-btn').textContent = intelExpanded ? '▲ 收起' : '▼ 展开';
+  if (intelExpanded) renderIntel();
+}
+
+async function renderIntel() {
+  const grid = document.getElementById('intel-grid');
+  try {
+    const intel = await apiGet('intel_log');
+    if (!intel || !intel.date) {
+      grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">暂无今日情报，将于每日08:00自动生成</div></div>';
+      return;
+    }
+    document.getElementById('intel-date-badge').textContent = '· ' + intel.date;
+    const sections = [
+      { key: 'global_news',  icon: '🌍', title: '全球动态' },
+      { key: 'ai_tech',      icon: '🤖', title: 'AI与科技' },
+      { key: 'finance',      icon: '💰', title: '财经供应链' },
+      { key: 'ecommerce',    icon: '🛒', title: '电商运营情报' },
+      { key: 'methodology',  icon: '📚', title: '跨平台方法论' },
+      { key: 'xiaohongshu',  icon: '🌸', title: '小红书趋势选品' },
+    ];
+    grid.innerHTML = sections.map(s => {
+      const text = intel[s.key] || '';
+      if (!text) return '';
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px">${s.icon} ${s.title}</div>
+        <div style="font-size:11px;color:var(--text);line-height:1.7;white-space:pre-wrap;max-height:200px;overflow-y:auto">${text.substring(0,600)}${text.length>600?'...':''}</div>
+      </div>`;
+    }).filter(Boolean).join('');
+    if (!grid.innerHTML) {
+      grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">今日情报尚未生成</div></div>';
+    }
+  } catch(e) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">情报加载失败：' + e.message + '</div></div>';
+  }
 }
 
 // ─── 每日洞察 ────────────────────────────────
