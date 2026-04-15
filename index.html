@@ -562,6 +562,25 @@
           <div class="form-group"><label>今日灵感 / 有效尝试</label><textarea id="ci-insight" placeholder="例：新话术'限时48h'测试ROI提升0.3" style="min-height:70px"></textarea></div>
         </div>
       </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">今日爆款记录 <span style="font-size:11px;color:var(--muted);font-weight:400">（选填，填写后AI可给出精准选品建议）</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="form-group" style="margin:0"><label>Top1 款式名/货号</label><input type="text" id="ci-sku1" placeholder="例：厚底乐福鞋-黑色"></div>
+          <div class="form-group" style="margin:0"><label>成交件数</label><input type="number" id="ci-sku1-qty" placeholder="例：45"></div>
+          <div class="form-group" style="margin:0"><label>客单价(¥)</label><input type="number" id="ci-sku1-price" placeholder="例：89"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="form-group" style="margin:0"><label>Top2 款式名/货号</label><input type="text" id="ci-sku2" placeholder="例：帆布鞋-白色"></div>
+          <div class="form-group" style="margin:0"><label>成交件数</label><input type="number" id="ci-sku2-qty" placeholder="例：28"></div>
+          <div class="form-group" style="margin:0"><label>客单价(¥)</label><input type="number" id="ci-sku2-price" placeholder="例：69"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="form-group" style="margin:0"><label>Top3 款式名/货号</label><input type="text" id="ci-sku3" placeholder="例：运动拖鞋-灰色"></div>
+          <div class="form-group" style="margin:0"><label>成交件数</label><input type="number" id="ci-sku3-qty" placeholder="例：19"></div>
+          <div class="form-group" style="margin:0"><label>客单价(¥)</label><input type="number" id="ci-sku3-price" placeholder="例：59"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:0"><label>滞销款标记（可选）</label><input type="text" id="ci-slow-sku" placeholder="例：厚底凉鞋-米色 · 今日0单，已上架5天"></div>
+      </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="submitCheckin()">✓ 提交打卡 · 生成复盘</button>
         <button class="btn btn-secondary" onclick="saveDraft()">保存草稿</button>
@@ -1377,6 +1396,12 @@ async function addTempTask() {
 // ─── 数据打卡 ────────────────────────────────
 async function submitCheckin() {
   const gmv=document.getElementById('ci-gmv').value, roi=document.getElementById('ci-roi').value;
+    const skuData = [
+      {name:document.getElementById('ci-sku1').value, qty:document.getElementById('ci-sku1-qty').value, price:document.getElementById('ci-sku1-price').value},
+      {name:document.getElementById('ci-sku2').value, qty:document.getElementById('ci-sku2-qty').value, price:document.getElementById('ci-sku2-price').value},
+      {name:document.getElementById('ci-sku3').value, qty:document.getElementById('ci-sku3-qty').value, price:document.getElementById('ci-sku3-price').value},
+    ].filter(s=>s.name);
+    const slowSku = document.getElementById('ci-slow-sku').value;
   if (!gmv||!roi) { showToast('请至少填写GMV和ROI'); return; }
   const btn=event.target; btn.textContent='生成中...'; btn.disabled=true;
   try {
@@ -1388,6 +1413,8 @@ async function submitCheckin() {
       uncompleted:document.getElementById('ci-uncompleted').value,
       blocker:document.getElementById('ci-blocker').value,
       insight:document.getElementById('ci-insight').value,
+      skus:skuData,
+      slow_sku:slowSku,
     });
     document.getElementById('checkin-result').style.display='block';
     document.getElementById('checkin-output').textContent=text;
@@ -2067,6 +2094,7 @@ function renderDecisionList() {
         <span class="exp-date">${d.date}</span>
       </div>
       <div class="exp-content">${d.conclusion}</div>
+      ${d.background ? `<div style="margin-top:6px"><span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="const el=document.getElementById('dec-bg-'+d.id);const s=el.style.display==='none';el.style.display=s?'block':'none';this.textContent=s?'▲ 收起分析':'▼ 展开背景分析'">▼ 展开背景分析</span><div id="dec-bg-${d.id}" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--muted);white-space:pre-wrap;line-height:1.7">${d.background}</div></div>` : ''}
       ${d.options&&d.options.length ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${d.options.map((o,i)=>`<span class="badge ${d.chosen_option===o?'badge-green':'badge-blue'}" style="cursor:pointer" onclick="chooseOption(${d.id},'${o.replace(/'/g,"\'")}','${d.status}')">${o}</span>`).join('')}</div>` : ''}
       ${d.progress_notes&&d.progress_notes.length ? `<div class="exp-outcome">${d.progress_notes[d.progress_notes.length-1].date}：${d.progress_notes[d.progress_notes.length-1].note}</div>` : ''}
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
