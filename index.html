@@ -907,9 +907,11 @@
           <div id="competitor-result" style="display:none;margin-bottom:16px">
             <div class="card">
               <div class="card-title">分析报告</div>
+              <div style="font-size:11px;color:var(--warn);margin-bottom:8px;font-family:var(--mono)">⚠ 价格等实时数据请在「手动补充信息」中填写以提高准确度</div>
               <div class="ai-output" id="competitor-output"></div>
               <div class="btn-row">
                 <button class="btn btn-secondary" onclick="copyComp()">复制</button>
+                <button class="btn btn-primary" onclick="compToDecision()">📌 存入决策库</button>
               </div>
             </div>
           </div>
@@ -1800,6 +1802,35 @@ function renderCompHistory(data) {
 function copyComp() {
   navigator.clipboard?.writeText(document.getElementById('competitor-output').textContent)
     .then(() => showToast('已复制'));
+}
+
+async function compToDecision() {
+  const analysis = document.getElementById('competitor-output').textContent;
+  const compName = document.getElementById('comp-select-name').value || '竞品';
+  if (!analysis) { showToast('暂无分析内容'); return; }
+
+  // 提取战略决策建议部分
+  const lines = analysis.split('\n');
+  const decisionLine = lines.find(l => l.includes('📌') || l.includes('战略决策建议'));
+  const conclusion = decisionLine ? decisionLine.replace(/📌|\[|\]/g, '').trim() : '基于竞品分析的战略结论';
+
+  try {
+    const r = await fetch(SERVER_URL.replace('/api','') + '/api/decision', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title: '竞品分析：' + compName + ' · ' + new Date().toLocaleDateString('zh-CN'),
+        category: '竞品应对',
+        priority: 'P1',
+        background: '基于' + compName + '竞品深度分析',
+        conclusion: conclusion.substring(0, 200),
+        options: ['立即响应威胁', '攻击竞品弱点', '差异化突围'],
+        status: '待执行'
+      })
+    });
+    const d = await r.json();
+    if (d.ok) { showToast('✓ 已存入战略决策库'); await loadDecisions(); }
+    else throw new Error('保存失败');
+  } catch(e) { showToast('存入失败：' + e.message); }
 }
 
 // ─── 每日洞察 ────────────────────────────────
