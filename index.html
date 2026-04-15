@@ -818,6 +818,7 @@
           <div class="form-group"><label>核心竞品店铺（每行一个）</label><textarea id="cfg-competitors" style="min-height:90px" placeholder="竞品A&#10;竞品B&#10;竞品C"></textarea></div>
           <div class="form-group"><label>信息源白名单</label><textarea id="cfg-sources" style="min-height:90px" placeholder="飞瓜数据&#10;卡思数据&#10;派代网"></textarea></div>
           <div class="form-group"><label>核心痛点 / 当前最大挑战</label><input type="text" id="cfg-pain" placeholder="例：转化率偏低，退货率高"></div>
+          <div class="form-group"><label>目标人群画像</label><textarea id="cfg-audience" style="min-height:120px" placeholder="例：25-35岁职场女性，月收入8000-15000，注重性价比与品质感，偏好简约通勤风，常在下班后刷抖音，对明星同款/博主推荐敏感，决策周期短，价格敏感点在200元以下"></textarea></div>
         </div>
       </div>
       <div class="card">
@@ -951,6 +952,61 @@
         <div><div class="page-title">素材效能追踪</div><div class="page-sub">录入素材数据 · AI诊断效能 · 提炼复用方法论</div></div>
         <span class="badge badge-blue" id="mat-count-badge">0 条</span>
       </div>
+
+      <!-- 详情图/主图AI分析 -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">🖼 详情图 · 主图 AI视觉分析 <span style="font-size:11px;color:var(--muted);font-weight:400">· Gemini Vision · 直接上传图片</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div class="form-group">
+              <label>分析类型</label>
+              <select id="vision-type">
+                <option value="主图">主图优化分析</option>
+                <option value="详情图">详情图转化分析</option>
+                <option value="竞品对比">竞品图片对比</option>
+                <option value="买家秀">买家秀内容分析</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>补充说明（可选）</label>
+              <input type="text" id="vision-note" placeholder="例：这是我们的主推款厚底乐福鞋，目标人群20-30岁女性">
+            </div>
+            <div class="form-group">
+              <label>上传图片（支持多张，最多4张）</label>
+              <input type="file" id="vision-files" accept="image/*" multiple style="display:none" onchange="previewVisionImages()">
+              <div onclick="document.getElementById('vision-files').click()" style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;color:var(--muted);font-size:13px;transition:border-color 0.2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+                <div style="font-size:24px;margin-bottom:8px">📁</div>
+                <div>点击上传图片</div>
+                <div style="font-size:11px;margin-top:4px">JPG / PNG · 最多4张</div>
+              </div>
+            </div>
+            <div id="vision-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+            <button class="btn btn-primary" onclick="runVisionAnalysis()" id="vision-btn">🔍 开始分析</button>
+          </div>
+          <div>
+            <div id="vision-result" style="display:none">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:6px">AI分析报告</div>
+              <div class="ai-output" id="vision-output" style="min-height:200px"></div>
+              <div class="btn-row" style="margin-top:8px">
+                <button class="btn btn-secondary" onclick="copyVision()">复制</button>
+                <button class="btn btn-primary" onclick="saveVisionToExp()">📌 存入经验库</button>
+              </div>
+            </div>
+            <div id="vision-placeholder" style="border:1px solid var(--border);border-radius:8px;padding:40px;text-align:center;color:var(--muted);font-size:13px">
+              <div style="font-size:32px;margin-bottom:12px">🖼</div>
+              <div>上传图片后AI将从以下维度分析：</div>
+              <div style="margin-top:12px;text-align:left;font-size:12px;line-height:2">
+                ✦ 视觉冲击力与点击率预测<br>
+                ✦ 卖点传达是否清晰<br>
+                ✦ 目标人群匹配度<br>
+                ✦ 与抖音平台调性契合度<br>
+                ✦ 具体优化建议（可直接执行）
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid2">
         <div>
           <div class="card">
@@ -1625,6 +1681,7 @@ async function saveConfig(){
     competitors:document.getElementById('cfg-competitors').value,
     sources:document.getElementById('cfg-sources').value,
     pain:document.getElementById('cfg-pain').value,
+    audience:document.getElementById('cfg-audience').value,
     currentGmv:document.getElementById('cfg-current-gmv').value,
     currentRoi:document.getElementById('cfg-current-roi').value,
     exp_summary:state.config.exp_summary||'',
@@ -1642,6 +1699,7 @@ function loadConfig(){
   document.getElementById('cfg-competitors').value=cfg.competitors||'';
   document.getElementById('cfg-sources').value=cfg.sources||'';
   document.getElementById('cfg-pain').value=cfg.pain||'';
+  document.getElementById('cfg-audience').value=cfg.audience||'';
   document.getElementById('cfg-current-gmv').value=cfg.currentGmv||'';
   document.getElementById('cfg-current-roi').value=cfg.currentRoi||'';
 }
@@ -1980,6 +2038,142 @@ async function loadCompHistory() {
         <div class="history-body" id="comp-body-${i}">${item.analysis||''}</div>
       </div>`).join('');
   } catch(e) {}
+}
+
+
+// ─── 详情图Vision分析 ────────────────────────────
+const GEMINI_KEY = 'AIzaSyAzTh2vYlFrYPQASx37CRnRqtdpy2wHO_U';
+let visionImages = [];
+
+function previewVisionImages() {
+  const files = document.getElementById('vision-files').files;
+  const preview = document.getElementById('vision-preview');
+  visionImages = [];
+  preview.innerHTML = '';
+  const max = Math.min(files.length, 4);
+  for (let i = 0; i < max; i++) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      visionImages.push(e.target.result);
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.style = 'width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--border)';
+      document.getElementById('vision-preview').appendChild(img);
+    };
+    reader.readAsDataURL(files[i]);
+  }
+}
+
+async function runVisionAnalysis() {
+  if (!visionImages.length) { showToast('请先上传图片'); return; }
+  const btn = document.getElementById('vision-btn');
+  btn.textContent = '分析中...'; btn.disabled = true;
+  document.getElementById('vision-result').style.display = 'block';
+  document.getElementById('vision-placeholder').style.display = 'none';
+  document.getElementById('vision-output').textContent = '正在调用Gemini Vision分析，约需10-20秒...';
+
+  const type = document.getElementById('vision-type').value;
+  const note = document.getElementById('vision-note').value;
+
+  // 读取店铺配置和人群画像
+  const vcfg = state?.config || {};
+  const audienceDesc = vcfg.audience || '25-35岁女性消费者';
+  const shopContext = [
+    vcfg.category ? '店铺类目：' + vcfg.category : '鞋服类目',
+    vcfg.skus ? '主推SKU：' + vcfg.skus : '',
+    vcfg.price ? '价格带：' + vcfg.price : '',
+    '目标人群画像：' + audienceDesc,
+  ].filter(Boolean).join('
+');
+
+  const typePrompts = {
+    '主图': '请从以下维度分析这张主图/封面图：
+① 视觉冲击力（1-10分）：在抖音信息流中的抢眼程度
+② 点击率预测：能否激发目标人群的点击欲望，原因是什么
+③ 卖点传达：产品核心卖点是否在3秒内清晰传达
+④ 文字/排版：文字信息量、字体大小、颜色对比是否适合移动端
+⑤ 人群匹配：图片风格与目标人群画像是否契合
+⑥ 可直接执行的优化方案（3条，精确到具体改法）',
+    '详情图': '请分析这组详情图的转化能力：
+① 转化逻辑：是否有清晰的"痛点引入→产品呈现→信任建立→行动引导"路径
+② 信息密度：每张图信息量是否合适，有无过载或空洞
+③ 视觉层次：重点信息是否突出，用户视线引导是否流畅
+④ 信任建设：材质/工艺/尺码/买家秀等信任元素是否充分
+⑤ 价值感：是否有效建立价格锚点和产品价值感
+⑥ 可直接执行的优化方案（3条，精确到具体改法）',
+    '竞品对比': '请从竞争分析角度解读这张竞品图片：
+① 竞品视觉策略：整体风格定位和目标人群判断
+② 核心卖点呈现：竞品主打什么差异化，传达是否有效
+③ 设计亮点：哪些值得借鉴的设计手法
+④ 竞品弱点：视觉上哪些地方做得不足，是我方机会点
+⑤ 差异化建议：我方如何在视觉上形成有效区隔',
+    '买家秀': '请分析这张买家秀/UGC内容：
+① 真实感与说服力（1-10分）：对潜在买家的说服效果
+② 使用场景：展示了哪些场景，覆盖了哪些目标人群
+③ 情感共鸣：内容能否引发购买欲望，关键触发点是什么
+④ 可复用元素：哪些视觉/文案元素可提炼到官方内容
+⑤ 引导策略：如何激励产出更多类似优质买家秀'
+  };
+
+  const prompt = `你是专注抖音鞋服类目的视觉营销专家，深度理解目标消费者的内容消费习惯和购买决策路径。
+
+=== 店铺信息 ===
+${shopContext}
+
+=== 分析任务 ===
+分析类型：${type}
+${note ? '补充说明：' + note : ''}
+
+${typePrompts[type]}
+
+严禁套话，所有建议必须基于图片实际内容，精确到可直接执行的动作。`;
+
+  const parts = [{text: prompt}];
+  for (const img of visionImages) {
+    const [header, data] = img.split(',');
+    const mimeType = header.match(/:(.*?);/)[1];
+    parts.push({inline_data: {mime_type: mimeType, data: data}});
+  }
+
+  try {
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({contents: [{parts}]})
+    });
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error.message);
+    const result = d.candidates?.[0]?.content?.parts?.[0]?.text || '分析失败';
+    document.getElementById('vision-output').textContent = result;
+    showToast('✓ 分析完成');
+  } catch(e) {
+    document.getElementById('vision-output').textContent = '⚠ ' + e.message;
+    showToast('分析失败：' + e.message);
+  }
+  btn.textContent = '🔍 开始分析'; btn.disabled = false;
+}
+
+function copyVision() {
+  navigator.clipboard?.writeText(document.getElementById('vision-output').textContent).then(()=>showToast('已复制'));
+}
+
+async function saveVisionToExp() {
+  const text = document.getElementById('vision-output').textContent;
+  const type = document.getElementById('vision-type').value;
+  if (!text || text.startsWith('⚠') || text.startsWith('正在')) { showToast('暂无有效分析内容'); return; }
+  try {
+    const exps = await apiGet('experiences') || [];
+    exps.unshift({
+      id: Date.now(),
+      date: new Date().toLocaleDateString('zh-CN'),
+      category: '视觉优化',
+      title: type + '分析·' + new Date().toLocaleDateString('zh-CN'),
+      content: text.substring(0, 800),
+      tags: [type, '图片分析', 'Gemini']
+    });
+    await apiPost('experiences', exps);
+    showToast('✓ 已存入经验库');
+  } catch(e) { showToast('存入失败：' + e.message); }
 }
 
 // ─── 素材效能 ────────────────────────────────
