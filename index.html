@@ -876,39 +876,48 @@
     <!-- 竞品追踪 -->
     <div class="page" id="page-competitor">
       <div class="page-header">
-        <div><div class="page-title">竞品追踪分析</div><div class="page-sub">录入竞品动态 · AI提炼用户痛点与机会 · 自动注入决策库</div></div>
+        <div><div class="page-title">竞品追踪分析</div><div class="page-sub">添加竞品链接 · AI自动多维搜索分析 · 每日自动监控</div></div>
         <span class="badge badge-red" id="comp-count-badge">0 条</span>
       </div>
       <div class="grid2">
         <div>
           <div class="card">
-            <div class="card-title">录入竞品动态</div>
-            <div class="form-group"><label>竞品名称</label><input type="text" id="comp-name" placeholder="例：一只鱼官方旗舰店"></div>
-            <div class="form-group"><label>价格/SKU变动</label><textarea id="comp-price" style="min-height:70px" placeholder="例：主推款从¥259降至¥219，新增¥99入门款"></textarea></div>
-            <div class="form-group"><label>活动/优惠配置</label><textarea id="comp-promo" style="min-height:70px" placeholder="例：参加平台满减，叠加店铺券最高减50"></textarea></div>
-            <div class="form-group"><label>商品图/详情图风格</label><textarea id="comp-visual" style="min-height:80px" placeholder="例：主图改为白底极简风，突出材质特写；详情页增加穿搭场景图"></textarea></div>
-            <div class="form-group"><label>用户评价摘录（直接粘贴）</label><textarea id="comp-reviews" style="min-height:100px" placeholder="粘贴近期评价，AI自动提炼痛点和机会点"></textarea></div>
-            <div class="form-group"><label>其他观察</label><textarea id="comp-notes" style="min-height:60px" placeholder="直播场次、达人合作、新品上架等"></textarea></div>
+            <div class="card-title">竞品库管理</div>
+            <div id="comp-config-list"><div class="empty-state"><div class="empty-icon">⊛</div><div class="empty-text">暂无竞品，添加后自动每日监控</div></div></div>
+            <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+              <div class="form-group"><label>竞品名称</label><input type="text" id="comp-add-name" placeholder="例：一只鱼官方旗舰店"></div>
+              <div class="form-group"><label>抖音店铺链接（选填）</label><input type="text" id="comp-add-link" placeholder="例：https://v.douyin.com/xxx"></div>
+              <div class="form-group"><label>类目</label><input type="text" id="comp-add-category" placeholder="例：鞋类"></div>
+              <button class="btn btn-secondary" style="width:100%" onclick="addCompetitorConfig()">+ 添加竞品</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:16px">
+            <div class="card-title">手动补充信息</div>
+            <div class="form-group"><label>选择竞品</label>
+              <select id="comp-select-name"><option value="">选择竞品...</option></select>
+            </div>
+            <div class="form-group"><label>补充评价/观察（可选）</label><textarea id="comp-extra-notes" style="min-height:80px" placeholder="粘贴抖音评价、直播观察、价格变动等补充信息，AI会结合自动搜索结果一起分析"></textarea></div>
             <div class="btn-row">
-              <button class="btn btn-primary" onclick="submitCompetitor()">⊛ 分析竞品</button>
-              <button class="btn btn-secondary" onclick="clearCompetitor()">清空</button>
+              <button class="btn btn-primary" onclick="runCompetitorAnalysis()">⊛ 立即分析</button>
+              <button class="btn btn-secondary" onclick="runAllCompetitors()">⊛ 分析全部竞品</button>
             </div>
           </div>
         </div>
         <div>
-          <div id="competitor-result" style="display:none">
+          <div id="competitor-result" style="display:none;margin-bottom:16px">
             <div class="card">
-              <div class="card-title">竞品分析报告</div>
+              <div class="card-title">分析报告</div>
               <div class="ai-output" id="competitor-output"></div>
               <div class="btn-row">
                 <button class="btn btn-secondary" onclick="copyComp()">复制</button>
               </div>
             </div>
           </div>
-          <div class="card" style="margin-top:0">
-            <div class="card-title">历史竞品记录</div>
+          <div class="card">
+            <div class="card-title">历史分析记录</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="comp-filter-btns"></div>
             <div id="comp-history">
-              <div class="empty-state"><div class="empty-icon">⊛</div><div class="empty-text">暂无竞品记录</div></div>
+              <div class="empty-state"><div class="empty-icon">⊛</div><div class="empty-text">暂无分析记录</div></div>
             </div>
           </div>
         </div>
@@ -1289,6 +1298,7 @@ function goto(page) {
   document.getElementById('page-'+page).classList.add('active');
   event?.target?.closest('.nav-item')?.classList.add('active');
   if (page==='today') refreshTodayPage();
+  if (page==='competitor') { loadCompetitorConfigs(); loadCompHistory(); }
   if (page==='plan-view') renderPlanView();
   if (page==='summary-day') renderDayReports();
   if (page==='summary-week') renderWeekReports();
@@ -1626,9 +1636,171 @@ async function init(){
     }
   },60000);
   if(MODE==='local'&&!DEEPSEEK_KEY) setTimeout(()=>showToast('本地模式：请填入 DEEPSEEK_KEY 启用AI'),1500);
-  if(MODE==='cloud') { loadInsightHistory(); loadCompHistory(); loadMatList(); loadDecisions(); loadGmvForecast(); }
+  if(MODE==='cloud') { loadInsightHistory(); loadCompHistory(); loadMatList(); loadDecisions(); loadGmvForecast(); loadCompetitorConfigs(); }
 }
 
+
+
+// ─── 竞品配置管理 ────────────────────────────
+let competitorConfigs = [];
+
+async function loadCompetitorConfigs() {
+  try {
+    const r = await fetch(SERVER_URL.replace('/api','') + '/api/competitor_config');
+    competitorConfigs = await r.json() || [];
+    renderCompConfigList();
+    updateCompSelect();
+  } catch(e) { console.log('竞品配置加载失败', e); }
+}
+
+function renderCompConfigList() {
+  const container = document.getElementById('comp-config-list');
+  if (!competitorConfigs.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">⊛</div><div class="empty-text">暂无竞品，添加后自动每日监控</div></div>';
+    return;
+  }
+  container.innerHTML = competitorConfigs.map((c,i) => `
+    <div class="task-item">
+      <div class="task-text">
+        <div style="font-weight:500">${c.name}</div>
+        <div style="font-size:11px;color:var(--text3)">${c.category || ''} ${c.link ? '· 已配置链接' : '· 无链接'}</div>
+      </div>
+      <button class="btn btn-danger" style="font-size:10px;padding:3px 8px" onclick="removeCompetitorConfig(${i})">删除</button>
+    </div>`).join('');
+}
+
+function updateCompSelect() {
+  const sel = document.getElementById('comp-select-name');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">选择竞品...</option>' +
+    competitorConfigs.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+}
+
+async function addCompetitorConfig() {
+  const name = document.getElementById('comp-add-name').value.trim();
+  if (!name) { showToast('请填写竞品名称'); return; }
+  const link = document.getElementById('comp-add-link').value.trim();
+  const category = document.getElementById('comp-add-category').value.trim();
+  if (competitorConfigs.find(c => c.name === name)) { showToast('该竞品已存在'); return; }
+  competitorConfigs.push({ name, link, category, added: new Date().toISOString().split('T')[0] });
+  await saveCompetitorConfigs();
+  document.getElementById('comp-add-name').value = '';
+  document.getElementById('comp-add-link').value = '';
+  document.getElementById('comp-add-category').value = '';
+  showToast('✓ 竞品已添加，将自动纳入每日监控');
+}
+
+async function removeCompetitorConfig(idx) {
+  competitorConfigs.splice(idx, 1);
+  await saveCompetitorConfigs();
+  showToast('已删除');
+}
+
+async function saveCompetitorConfigs() {
+  try {
+    await fetch(SERVER_URL.replace('/api','') + '/api/competitor_config', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(competitorConfigs)
+    });
+    renderCompConfigList();
+    updateCompSelect();
+  } catch(e) { showToast('保存失败'); }
+}
+
+async function runCompetitorAnalysis() {
+  const name = document.getElementById('comp-select-name').value;
+  if (!name) { showToast('请选择竞品'); return; }
+  const comp = competitorConfigs.find(c => c.name === name);
+  if (!comp) { showToast('竞品不存在'); return; }
+  const btn = event.target; btn.textContent = '分析中...'; btn.disabled = true;
+  document.getElementById('competitor-result').style.display = 'block';
+  document.getElementById('competitor-output').textContent = '正在搜索多维数据并分析，约需30-60秒...';
+  try {
+    const r = await fetch(SERVER_URL + '/ai/competitor_single', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name: comp.name,
+        link: comp.link || '',
+        category: comp.category || '',
+        extra_notes: document.getElementById('comp-extra-notes').value
+      })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    document.getElementById('competitor-output').textContent = d.result;
+    await loadCompHistory();
+    showToast('竞品分析完成');
+  } catch(e) {
+    document.getElementById('competitor-output').textContent = '⚠ ' + e.message;
+  }
+  btn.textContent = '⊛ 立即分析'; btn.disabled = false;
+}
+
+async function runAllCompetitors() {
+  if (!competitorConfigs.length) { showToast('请先添加竞品'); return; }
+  const btn = event.target; btn.textContent = '分析中...'; btn.disabled = true;
+  showToast('开始分析全部' + competitorConfigs.length + '个竞品，请稍候...');
+  for (const comp of competitorConfigs) {
+    try {
+      await fetch(SERVER_URL + '/ai/competitor_single', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name: comp.name, link: comp.link || '', category: comp.category || '' })
+      });
+    } catch(e) { console.log('分析失败：' + comp.name, e); }
+  }
+  await loadCompHistory();
+  showToast('全部竞品分析完成');
+  btn.textContent = '⊛ 分析全部竞品'; btn.disabled = false;
+}
+
+async function loadCompHistory() {
+  try {
+    const r = await fetch(SERVER_URL + '/competitor_log');
+    const d = await r.json() || [];
+    document.getElementById('comp-count-badge').textContent = d.length + ' 条';
+
+    // 生成竞品过滤按钮
+    const names = [...new Set(d.map(item => item.name))];
+    const filterContainer = document.getElementById('comp-filter-btns');
+    if (filterContainer) {
+      filterContainer.innerHTML = '<button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterCompHistory(null)">全部</button>' +
+        names.map(n => `<button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="filterCompHistory('${n}')">${n}</button>`).join('');
+    }
+
+    renderCompHistory(d);
+  } catch(e) {}
+}
+
+let compHistoryData = [];
+function filterCompHistory(name) {
+  const filtered = name ? compHistoryData.filter(i => i.name === name) : compHistoryData;
+  renderCompHistory(filtered);
+}
+
+function renderCompHistory(data) {
+  compHistoryData = data;
+  const container = document.getElementById('comp-history');
+  if (!data || !data.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">⊛</div><div class="empty-text">暂无分析记录</div></div>';
+    return;
+  }
+  container.innerHTML = data.slice(0,20).map((item,i) => `
+    <div class="history-item">
+      <div class="history-header" onclick="toggleHistory('comp-body-${i}')">
+        <div>
+          <div class="history-title">${item.name}</div>
+          <div class="history-date">${item.date}</div>
+        </div>
+        <span class="badge badge-red">竞品报告</span>
+      </div>
+      <div class="history-body" id="comp-body-${i}">${item.analysis || ''}</div>
+    </div>`).join('');
+}
+
+function copyComp() {
+  navigator.clipboard?.writeText(document.getElementById('competitor-output').textContent)
+    .then(() => showToast('已复制'));
+}
 
 // ─── 每日洞察 ────────────────────────────────
 async function submitInsight() {
