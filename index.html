@@ -1239,21 +1239,25 @@ async function apiFetch(path, opts={}) {
 
 async function doLogin() {
   const token = document.getElementById('login-token-input').value.trim();
-  if (!token) { document.getElementById('login-err').textContent='请输入令牌'; return; }
+  const errEl = document.getElementById('login-err');
+  if (!token) { errEl.textContent='请输入令牌'; return; }
+  errEl.textContent='验证中...';
   try {
-    const res = await apiFetch('/login', {
-      method:'POST',
+    const res = await fetch(SERVER_URL + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({token})
     });
     if (res.ok) {
       setToken(token);
       document.getElementById('login-overlay').style.display='none';
-      initApp();
+      errEl.textContent='';
+      init();
     } else {
-      document.getElementById('login-err').textContent='令牌错误，请重试';
+      errEl.textContent='令牌错误，请重试';
     }
   } catch(e) {
-    document.getElementById('login-err').textContent='连接失败：' + e.message;
+    errEl.textContent='连接失败：' + e.message;
   }
 }
 
