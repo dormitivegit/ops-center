@@ -1837,8 +1837,7 @@ function showMonthCalendar() {
     const dayT = planTasks.filter(t => t.date === dateStr);
     calHtml += `<div style="border:1px solid var(--border);border-radius:6px;padding:4px;min-height:48px;
       background:${isToday?'var(--accent)':'var(--bg2)'};cursor:pointer"
-      title="${dayT.map(t=>t.task||t.text||'').join('
-')}">
+      title="${dayT.map(t=>t.task||t.text||'').join(' | ')}">
       <div style="font-size:10px;font-weight:${isToday?700:400};color:${isToday?'#fff':'var(--text)'}">${d}</div>
       ${dayT.slice(0,2).map(t=>`<div style="font-size:9px;color:${isToday?'rgba(255,255,255,.8)':'var(--muted)'};overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${t.task||t.text||''}</div>`).join('')}
     </div>`;
