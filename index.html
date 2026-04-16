@@ -2344,6 +2344,7 @@ async function renderIntel() {
   try {
     // 从后端专用接口读取，确保字段名正确
     const r = await apiFetch('/intel/today');
+    if (!r.ok) { grid.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">情报接口错误：'+r.status+'</div></div>'; return; }
     const intel = await r.json();
     if (!intel || !intel.date) {
       grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">暂无今日情报，将于每日08:00自动生成</div></div>';
@@ -2431,16 +2432,16 @@ async function submitInsight() {
   const btn = event.target; btn.textContent = '分析中...'; btn.disabled = true;
   try {
     const r = await apiFetch('/ai/insight', {
-      method: 'POST', headers: {},
+      method: 'POST',
       body: JSON.stringify({
         market: document.getElementById('ins-market').value,
-        methodology_context: window.TOP_ECOM_METHODOLOGY || '',
         idea: document.getElementById('ins-idea').value,
         friction: document.getElementById('ins-friction').value,
         mood: document.getElementById('ins-mood').value,
         extra: document.getElementById('ins-extra').value
       })
     });
+    if (!r.ok) { const e = await r.json().catch(()=>({error:'服务器错误'})); throw new Error(e.error||r.status); }
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     document.getElementById('insight-result').style.display = 'block';
@@ -2461,7 +2462,9 @@ function clearInsight() {
 function copyInsight() { navigator.clipboard?.writeText(document.getElementById('insight-output').textContent).then(()=>showToast('已复制')); }
 async function loadInsightHistory() {
   try {
-    const r = await apiFetch('/insight_log'); const d = await r.json();
+    const r = await apiFetch('/insight_log');
+    if (!r.ok) return;
+    const d = await r.json();
     const container = document.getElementById('insight-history');
     if (!d || !d.length) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">◉</div><div class="empty-text">暂无历史记录</div></div>'; return; }
     container.innerHTML = d.slice(0,5).map((item,i) => `
@@ -2477,7 +2480,9 @@ async function loadGmvForecast() {
   const container = document.getElementById('gmv-forecast-display');
   container.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px">加载中...</div>';
   try {
-    const r = await apiFetch('/ai/gmv-forecast', {method:'POST', body:'{}'}); const d = await r.json();
+    const r = await apiFetch('/ai/gmv-forecast', {method:'POST', body:'{}'});
+    if (!r.ok) { container.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px">暂无数据</div>'; return; }
+    const d = await r.json();
     if (d.error) throw new Error(d.error);
     const data = d.data || {};
     container.innerHTML = `
@@ -2526,7 +2531,9 @@ function clearCompetitor() {
 function copyComp() { navigator.clipboard?.writeText(document.getElementById('competitor-output').textContent).then(()=>showToast('已复制')); }
 async function loadCompHistory() {
   try {
-    const r = await apiFetch('/competitor_log'); const d = await r.json();
+    const r = await apiFetch('/competitor_log');
+    if (!r.ok) return;
+    const d = await r.json();
     const container = document.getElementById('comp-history');
     document.getElementById('comp-count-badge').textContent = (d||[]).length + ' 条';
     if (!d||!d.length) { container.innerHTML='<div class="empty-state"><div class="empty-icon">⊛</div><div class="empty-text">暂无竞品记录</div></div>'; return; }
@@ -2656,7 +2663,9 @@ function clearMaterial() {
 }
 async function loadMatList() {
   try {
-    const r = await apiFetch('/material_log'); const d = await r.json();
+    const r = await apiFetch('/material_log');
+    if (!r.ok) return;
+    const d = await r.json();
     document.getElementById('mat-count-badge').textContent = (d||[]).length + ' 条';
     document.getElementById('mat-total').textContent = (d||[]).length;
     if (d && d.length) {
@@ -2710,6 +2719,7 @@ function clearDecision() {
 async function loadDecisions() {
   try {
     const r = await apiFetch('/decision');
+    if (!r.ok) { decisionsCache = []; return; }
     decisionsCache = await r.json() || [];
     renderDecisionList(); updateDecisionStats();
   } catch(e) {}
