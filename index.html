@@ -1720,6 +1720,13 @@ async function applyPlan() {
     {text:'确认月度GMV目标：¥'+(p.gmv||0),priority:'p1',done:false,date:todayStr()},
     {text:'情报系统首次运行，获取本周行业动态',priority:'p2',done:false,date:todayStr()},
   ];
+  // 尝试从parsed文本提取daily_tasks结构
+  if (state._pendingPlan && state._pendingPlan.parsed) {
+    state._pendingPlan.daily_tasks = extractDailyTasks(
+      state._pendingPlan.parsed,
+      state._pendingPlan.month
+    );
+  }
   await syncTasks(); showToast('✓ 月计划已保存'); goto('plan-view');
 }
 
@@ -1741,13 +1748,113 @@ function renderPlanView() {
 }
 
 function renderWeekGrid() {
-  const days=['一','二','三','四','五','六','日'], todayIdx=(new Date().getDay()+6)%7;
-  document.getElementById('week-grid').innerHTML=days.map((d,i)=>{
-    const isToday=i===todayIdx;
-    const dayTasks=state.tasks.filter(t=>!t.done).slice(0,2);
-    const taskHtml=isToday&&dayTasks.length>0?dayTasks.map(t=>`<div class="day-task">· ${t.text.substring(0,18)}${t.text.length>18?'…':''}</div>`).join(''):'<div class="day-task" style="color:var(--text3)">--</div>';
-    return `<div class="day-card ${isToday?'today':''}"><div class="day-label">周${d}</div>${taskHtml}</div>`;
-  }).join('');
+  const container = document.getElementById('week-grid');
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const todayDate = now.getDate();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const dayNames = ['日','一','二','三','四','五','六'];
+
+  // 从plan.daily_tasks读取日期映射任务，fallback到tasks
+  const planTasks = (state.plan && state.plan.daily_tasks) || [];
+  const todayTasks = state.tasks || [];
+
+  // 生成本月日历（4周视图，显示当前所在周±1周）
+  const todayDow = now.getDay(); // 0=周日
+  const weekStart = todayDate - todayDow; // 本周周日的日期数
+
+  let html = '';
+  // 显示本周7天
+  for (let offset = 0; offset < 7; offset++) {
+    const d = weekStart + offset;
+    if (d < 1 || d > daysInMonth) {
+      html += `<div class="day-card" style="opacity:.3"><div class="day-label">${dayNames[offset]}</div><div class="day-task" style="color:var(--text3)">--</div></div>`;
+      continue;
+    }
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = d === todayDate;
+    const isPast  = d < todayDate;
+
+    // 匹配任务：plan.daily_tasks中date等于dateStr的任务
+    const dayPlanTasks = planTasks.filter(t => t.date === dateStr);
+    // 今天额外显示state.tasks
+    const dayStateTasks = isToday ? todayTasks.filter(t => !t.done).slice(0, 2) : [];
+    const allTasks = [...dayPlanTasks, ...dayStateTasks];
+
+    const taskHtml = allTasks.length > 0
+      ? allTasks.slice(0,3).map(t => {
+          const done = t.done || false;
+          const p = t.priority || t.p || '';
+          const pColor = p==='P1' ? 'var(--danger)' : p==='P2' ? 'var(--warn)' : 'var(--muted)';
+          return `<div class="day-task" style="${done?'text-decoration:line-through;color:var(--text3)':''}">
+            ${p?`<span style="font-size:9px;color:${pColor};font-weight:700">${p} </span>`:''}· ${(t.text||t.task||'').substring(0,16)}${(t.text||t.task||'').length>16?'…':''}
+          </div>`;
+        }).join('')
+      : `<div class="day-task" style="color:var(--text3)">${isPast?'已过':'待排'}</div>`;
+
+    html += `<div class="day-card ${isToday?'today':''}" style="${isPast&&!isToday?'opacity:.6':''}">
+      <div class="day-label" style="display:flex;justify-content:space-between">
+        <span>周${dayNames[offset]}</span>
+        <span style="font-size:10px;color:${isToday?'var(--accent)':'var(--muted)'}">${d}日</span>
+      </div>
+      ${taskHtml}
+    </div>`;
+  }
+
+  // 周导航
+  container.innerHTML = `
+    <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span style="font-size:12px;color:var(--muted)">${year}年${month+1}月 · 本周</span>
+      <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="showMonthCalendar()">查看全月 ▸</span>
+    </div>
+    ${html}`;
+}
+
+function showMonthCalendar() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const todayDate = now.getDate();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const firstDow = new Date(year, month, 1).getDay();
+  const dayNames = ['日','一','二','三','四','五','六'];
+  const planTasks = (state.plan && state.plan.daily_tasks) || [];
+
+  let calHtml = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px">
+    ${dayNames.map(d=>`<div style="text-align:center;font-size:10px;color:var(--muted);padding:4px">${d}</div>`).join('')}`;
+
+  // 前置空格
+  for (let i=0; i<firstDow; i++) calHtml += '<div></div>';
+
+  for (let d=1; d<=daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = d === todayDate;
+    const dayT = planTasks.filter(t => t.date === dateStr);
+    calHtml += `<div style="border:1px solid var(--border);border-radius:6px;padding:4px;min-height:48px;
+      background:${isToday?'var(--accent)':'var(--bg2)'};cursor:pointer"
+      title="${dayT.map(t=>t.task||t.text||'').join('
+')}">
+      <div style="font-size:10px;font-weight:${isToday?700:400};color:${isToday?'#fff':'var(--text)'}">${d}</div>
+      ${dayT.slice(0,2).map(t=>`<div style="font-size:9px;color:${isToday?'rgba(255,255,255,.8)':'var(--muted)'};overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${t.task||t.text||''}</div>`).join('')}
+    </div>`;
+  }
+  calHtml += '</div>';
+
+  const old = document.getElementById('month-cal-modal');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'month-cal-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
+  modal.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:600px;width:100%;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+      <div style="font-weight:700">${year}年${month+1}月 全月计划</div>
+      <button onclick="document.getElementById('month-cal-modal').remove()" style="background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    ${calHtml}
+  </div>`;
+  document.body.appendChild(modal);
+  modal.onclick = e => { if(e.target===modal) modal.remove(); };
 }
 
 function renderIntelLog() {
@@ -2823,6 +2930,58 @@ async function checkinToExperience() {
     renderExpList(); updateExpStats();
     showToast('✓ 已存入经验库');
   } catch(e) { showToast('存入失败：' + e.message); }
+}
+
+
+// ─── 从AI解析文本提取每日任务 ────────────────
+function extractDailyTasks(parsedText, monthStr) {
+  const tasks = [];
+  if (!parsedText || !monthStr) return tasks;
+
+  // 尝试匹配 YYYY-MM-DD 格式日期
+  const datePattern = /(\d{4}-\d{2}-\d{2})/g;
+  const lines = parsedText.split('\n');
+
+  // 匹配【第X周】段落，按周分配日期
+  const weekPattern = /【第([一二三四])周[^】]*】[（(]([^）)]+)[）)]/;
+  const weekMap = { '一':0, '二':1, '三':2, '四':3 };
+
+  // 先尝试按周解析
+  let currentWeek = -1;
+  let weekStartDates = [];
+
+  // 计算每周起始日期
+  const [y, m] = monthStr.split('-').map(Number);
+  for (let w=0; w<4; w++) {
+    weekStartDates.push(new Date(y, m-1, 1 + w*7));
+  }
+
+  lines.forEach(line => {
+    const wm = line.match(/【第([一二三四])周/);
+    if (wm) { currentWeek = weekMap[wm[1]] || 0; return; }
+
+    // 匹配任务行：- [P1/P2] 任务内容
+    const taskMatch = line.match(/^[- ]*\[(P[123])\]\s*(.+)/);
+    if (taskMatch && currentWeek >= 0) {
+      const priority = taskMatch[1];
+      const taskText = taskMatch[2].trim();
+      // 分配到该周的周一
+      const d = new Date(weekStartDates[currentWeek]);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      tasks.push({ date: dateStr, task: taskText, priority, done: false });
+      // 下一条任务推后一天
+      weekStartDates[currentWeek] = new Date(d.getTime() + 86400000);
+      return;
+    }
+
+    // fallback: 直接匹配行内日期
+    const dm = line.match(/(\d{4}-\d{2}-\d{2})[：:]\s*(.+)/);
+    if (dm) {
+      tasks.push({ date: dm[1], task: dm[2].trim(), priority: 'P2', done: false });
+    }
+  });
+
+  return tasks;
 }
 
 </script>
