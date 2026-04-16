@@ -598,6 +598,19 @@
     </div>
 
     <!-- 数据打卡 -->
+
+      <!-- 今日情报速览 -->
+      <div class="card" style="margin-top:16px" id="intel-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleIntel()">
+          <div class="card-title" style="margin:0">📡 今日情报速览 <span style="font-size:11px;color:var(--muted);font-weight:400" id="intel-date-badge"></span></div>
+          <span style="font-size:12px;color:var(--accent)" id="intel-toggle-btn">展开 ▼</span>
+        </div>
+        <div id="intel-content" style="display:none;margin-top:16px">
+          <div id="intel-grid">
+            <div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">加载中...</div></div>
+          </div>
+        </div>
+      </div>
     <div class="page" id="page-checkin">
       <div class="page-header">
         <div><div class="page-title">17:20 数据打卡</div><div class="page-sub">填写今日核心数据，AI自动生成复盘报告</div></div>
@@ -957,19 +970,6 @@
         </div>
       </div>
     </div>
-
-      <!-- 今日情报速览 -->
-      <div class="card" style="margin-top:16px" id="intel-panel">
-        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleIntel()">
-          <div class="card-title" style="margin:0">📡 今日情报速览 <span style="font-size:11px;color:var(--muted);font-weight:400" id="intel-date-badge"></span></div>
-          <span style="font-size:12px;color:var(--accent)" id="intel-toggle-btn">▼ 展开</span>
-        </div>
-        <div id="intel-content" style="margin-top:16px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="intel-grid">
-            <div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">加载中...</div></div>
-          </div>
-        </div>
-      </div>
 
     <!-- 竞品追踪 -->
     <div class="page" id="page-competitor">
@@ -2282,14 +2282,14 @@ async function compToDecision() {
 
 
 // ─── 今日情报速览 ────────────────────────────
-let intelExpanded = false;
+let intelExpanded = false; // 默认收起，点击展开
 
 function toggleIntel() {
   intelExpanded = !intelExpanded;
-  document.getElementById('intel-content').style.display = intelExpanded ? 'block' : 'none';
-  document.querySelector('[onclick="toggleIntel()"]') && (
-    document.querySelector('[onclick="toggleIntel()"]').textContent = intelExpanded ? '收起 ▲' : '展开 ▼'
-  );
+  const content = document.getElementById('intel-content');
+  const btn = document.getElementById('intel-toggle-btn');
+  if (content) content.style.display = intelExpanded ? 'block' : 'none';
+  if (btn) btn.textContent = intelExpanded ? '收起 ▲' : '展开 ▼';
 }
 
 async function renderIntel() {
@@ -2343,6 +2343,14 @@ async function renderIntel() {
     </div>`;
 
     grid.innerHTML = intelHTML || '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">今日情报尚未生成</div></div>';
+    // 有内容时自动展开
+    if (intelHTML) {
+      intelExpanded = true;
+      const content = document.getElementById('intel-content');
+      const btn = document.getElementById('intel-toggle-btn');
+      if (content) content.style.display = 'block';
+      if (btn) btn.textContent = '收起 ▲';
+    }
   } catch(e) {
     grid.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">情报加载失败：' + e.message + '</div></div>';
   }
