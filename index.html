@@ -430,9 +430,62 @@
   .ring-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--accent); }
   .ring-info h3 { font-size: 15px; margin-bottom: 4px; }
   .ring-info p { font-size: 12px; color: var(--text2); }
+
+  /* ── 登录页 ── */
+  .login-overlay {
+    position:fixed;inset:0;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;
+    z-index:9999;
+  }
+  .login-box {
+    background:var(--bg2);border:1px solid var(--border);
+    border-radius:16px;padding:48px 40px;width:360px;max-width:90vw;
+    box-shadow:0 8px 40px rgba(0,0,0,.4);
+  }
+  .login-logo {
+    font-size:28px;font-weight:700;letter-spacing:2px;
+    color:var(--accent);text-align:center;margin-bottom:8px;
+  }
+  .login-sub {
+    text-align:center;color:var(--muted);font-size:12px;
+    margin-bottom:32px;letter-spacing:1px;
+  }
+  .login-input {
+    width:100%;padding:12px 16px;background:var(--bg3);
+    border:1px solid var(--border);border-radius:8px;
+    color:var(--text);font-size:14px;box-sizing:border-box;
+    margin-bottom:16px;outline:none;
+    transition:border-color .2s;
+  }
+  .login-input:focus { border-color:var(--accent); }
+  .login-btn {
+    width:100%;padding:12px;background:var(--accent);
+    border:none;border-radius:8px;color:#fff;
+    font-size:14px;font-weight:600;cursor:pointer;
+    transition:opacity .2s;
+  }
+  .login-btn:hover { opacity:.85; }
+  .login-err {
+    color:#ff6b6b;font-size:12px;text-align:center;
+    margin-top:10px;min-height:18px;
+  }
+
 </style>
 </head>
 <body>
+
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">⬡ OPS CENTER</div>
+    <div class="login-sub">运营作战中枢 · 访问验证</div>
+    <input class="login-input" type="password" id="login-token-input"
+      placeholder="请输入访问令牌"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">进入系统</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
 
 <div class="topbar">
   <div class="logo">⬡ OPS CENTER</div>
@@ -475,6 +528,10 @@
     <div class="nav-section">
       <div class="nav-label">配置</div>
       <div class="nav-item" onclick="goto('experience')"><span class="nav-icon">◆</span> 经验教训库</div>
+      <div style="margin:8px 12px 4px;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">即将上线</div>
+      <div class="nav-item" style="opacity:.4;cursor:not-allowed" title="Phase 2B"><span class="nav-icon">▶</span> 视频脚本库 <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:4px;margin-left:4px">soon</span></div>
+      <div class="nav-item" style="opacity:.4;cursor:not-allowed" title="Phase 2B"><span class="nav-icon">◈</span> 选款选品 <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:4px;margin-left:4px">soon</span></div>
+      <div class="nav-item" style="opacity:.4;cursor:not-allowed" title="Phase 2B"><span class="nav-icon">◎</span> 人群画像 <span style="font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:4px;margin-left:4px">soon</span></div>
       <div class="nav-item" onclick="goto('config')"><span class="nav-icon">⚙</span> 店铺配置</div>
     </div>
   </nav>
@@ -592,7 +649,8 @@
           <div class="btn-row">
             <button class="btn btn-secondary" onclick="saveReport()">存入日报</button>
             <button class="btn btn-secondary" onclick="copyReport()">复制全文</button>
-          </div>
+          <button class="btn btn-secondary" onclick="checkinToExperience()">◆ 存入经验库</button>
+            </div>
         </div>
       </div>
     </div>
@@ -768,6 +826,11 @@
             <div class="card-title">AI 提炼摘要</div>
             <p style="font-size:12px;color:var(--text2);margin-bottom:12px">基于当前经验库，AI提炼你的核心运营方法论，自动注入到每日复盘分析中。</p>
             <button class="btn btn-primary" style="width:100%" onclick="generateExpSummary()">◆ 提炼我的方法论</button>
+            <div id="exp-summary-actions" style="display:none;margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" onclick="saveExpSummaryToExp()">📌 存入经验库</button>
+              <button class="btn" onclick="saveExpSummaryToDecision()">⬡ 存入决策库</button>
+              <button class="btn" onclick="copyExpSummary()">⊡ 复制全文</button>
+            </div>
             <div id="exp-summary-output" style="display:none;margin-top:14px">
               <div class="ai-output" id="exp-summary-text" style="font-size:12px;line-height:1.8"></div>
             </div>
@@ -887,6 +950,8 @@
           <div class="card-title">融合分析结果</div>
           <div class="ai-output" id="insight-output"></div>
           <div class="btn-row">
+            <button class="btn btn-primary" onclick="insightToDecision()">📌 存入决策库</button>
+            <button class="btn btn-secondary" onclick="insightToExperience()">◆ 存入经验库</button>
             <button class="btn btn-secondary" onclick="copyInsight()">复制全文</button>
           </div>
         </div>
@@ -899,7 +964,7 @@
           <div class="card-title" style="margin:0">📡 今日情报速览 <span style="font-size:11px;color:var(--muted);font-weight:400" id="intel-date-badge"></span></div>
           <span style="font-size:12px;color:var(--accent)" id="intel-toggle-btn">▼ 展开</span>
         </div>
-        <div id="intel-content" style="display:none;margin-top:16px">
+        <div id="intel-content" style="margin-top:16px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="intel-grid">
             <div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">加载中...</div></div>
           </div>
@@ -945,6 +1010,7 @@
               <div class="btn-row">
                 <button class="btn btn-secondary" onclick="copyComp()">复制</button>
                 <button class="btn btn-primary" onclick="compToDecision()">📌 存入决策库</button>
+                <button class="btn btn-secondary" onclick="compToExperience()">◆ 存入经验库</button>
               </div>
             </div>
           </div>
@@ -1003,6 +1069,7 @@
               <div class="btn-row" style="margin-top:8px">
                 <button class="btn btn-secondary" onclick="copyVision()">复制</button>
                 <button class="btn btn-primary" onclick="saveVisionToExp()">📌 存入经验库</button>
+            <button class="btn btn-secondary" onclick="visionToDecision()">⬡ 存入决策库</button>
               </div>
             </div>
             <div id="vision-placeholder" style="border:1px solid var(--border);border-radius:8px;padding:40px;text-align:center;color:var(--muted);font-size:13px">
@@ -1100,7 +1167,7 @@
                 <option value="P3">P3 跟进</option>
               </select>
             </div>
-            <div class="form-group"><label>背景（为什么做这个决策）</label><textarea id="dec-background" style="min-height:80px" placeholder="例：人群画像分析显示主要买家为25-35岁女性，偏好简洁通勤风格"></textarea></div>
+            <div class="form-group"><label>背景（为什么做这个决策）</label><textarea id="dec-background" style="min-height:160px" placeholder="例：人群画像分析显示主要买家为25-35岁女性，偏好简洁通勤风格"></textarea></div>
             <div class="form-group"><label>核心结论</label><textarea id="dec-conclusion" style="min-height:70px" placeholder="例：主图需要从产品展示图改为通勤场景图，预计转化率提升10-15%"></textarea></div>
             <div class="form-group"><label>执行选项（每行一个选项，可留空）</label><textarea id="dec-options" style="min-height:80px" placeholder="选项A：极简白底+产品特写&#10;选项B：通勤场景+人物出镜&#10;选项C：A/B测试两套方案"></textarea></div>
             <div class="btn-row">
@@ -1157,6 +1224,52 @@
 
 // ─── 配置区 ──────────────────────────────────
 const SERVER_URL   = 'https://api.neurosisonline.top/api';
+
+// ─── Token验证 ───────────────────────────────
+function getToken() { return sessionStorage.getItem('ops_token') || ''; }
+function setToken(t) { sessionStorage.setItem('ops_token', t); }
+
+async function apiFetch(path, opts={}) {
+  const token = getToken();
+  const headers = Object.assign({ 'Content-Type':'application/json', 'X-Access-Token': token }, opts.headers||{});
+  const res = await fetch(SERVER_URL + path, { ...opts, headers });
+  if (res.status === 401) { logout(); throw new Error('未授权'); }
+  return res;
+}
+
+async function doLogin() {
+  const token = document.getElementById('login-token-input').value.trim();
+  if (!token) { document.getElementById('login-err').textContent='请输入令牌'; return; }
+  try {
+    const res = await apiFetch('/login', {
+      method:'POST', headers:{},
+      body: JSON.stringify({token})
+    });
+    if (res.ok) {
+      setToken(token);
+      document.getElementById('login-overlay').style.display='none';
+      initApp();
+    } else {
+      document.getElementById('login-err').textContent='令牌错误，请重试';
+    }
+  } catch(e) {
+    document.getElementById('login-err').textContent='连接失败：' + e.message;
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('ops_token');
+  document.getElementById('login-overlay').style.display='flex';
+  document.getElementById('login-token-input').value='';
+  document.getElementById('login-err').textContent='';
+}
+
+function checkLogin() {
+  const token = getToken();
+  if (!token) { return false; }
+  document.getElementById('login-overlay').style.display='none';
+  return true;
+}
 const DEEPSEEK_KEY = ''; // 本地模式填入：sk-xxxxxxxx
 
 // ─── 全局状态 ────────────────────────────────
@@ -1173,7 +1286,7 @@ async function detectMode() {
     MODE = 'local'; return;
   }
   try {
-    const r = await fetch(SERVER_URL + '/health', { signal: AbortSignal.timeout(4000) });
+    const r = await apiFetch('/health', { signal: AbortSignal.timeout(4000) });
     MODE = r.ok ? 'cloud' : 'local';
   } catch { MODE = 'local'; }
 }
@@ -1224,8 +1337,8 @@ async function syncTasks() { await dataSet('tasks', state.tasks); }
 async function callAI(prompt, maxTokens) {
   if (!maxTokens) maxTokens = 1000;
   if (MODE === 'cloud') {
-    const r = await fetch(SERVER_URL+'/ai/raw', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+    const r = await apiFetch('/ai/raw', {
+      method:'POST', headers:{},
       body:JSON.stringify({ prompt:prompt, max_tokens:maxTokens }),
       signal:AbortSignal.timeout(90000)
     });
@@ -1677,10 +1790,60 @@ async function generateExpSummary(){
   const exps=state.experiences||[];if(exps.length===0){showToast('还没有经验记录');return;}
   const btn=event.target;btn.textContent='提炼中...';btn.disabled=true;
   const expText=exps.slice(0,30).map(e=>'['+e.category+']['+(e.outcome==='positive'?'有效':e.outcome==='negative'?'踩坑':'待验证')+'] '+e.title+'\n'+e.detail).join('\n\n');
-  try{const text=await apiAI('exp-summary',{experiences:expText});document.getElementById('exp-summary-output').style.display='block';document.getElementById('exp-summary-text').textContent=text;}
-  catch(e){showToast('提炼失败：'+e.message);}
+  try{
+    const text=await apiAI('exp-summary',{experiences:expText});
+    document.getElementById('exp-summary-output').style.display='block';
+    document.getElementById('exp-summary-text').textContent=text;
+    const actDiv=document.getElementById('exp-summary-actions');
+    if(actDiv) actDiv.style.display='flex';
+  } catch(e){showToast('提炼失败：'+e.message);}
   btn.textContent='◆ 提炼我的方法论';btn.disabled=false;
 }
+
+async function saveExpSummaryToExp() {
+  const el = document.getElementById('exp-summary-text');
+  const text = el ? (el.innerText || el.textContent || '').trim() : '';
+  if (!text) { showToast('请先提炼方法论'); return; }
+  try {
+    const exps = state.experiences || [];
+    exps.unshift({
+      id: Date.now(),
+      date: todayStr(),
+      category: '方法论',
+      outcome: 'positive',
+      title: 'AI提炼方法论 ' + todayStr(),
+      detail: text.slice(0, 1000),
+      condition: '每月提炼，自动注入AI分析'
+    });
+    await dataSet('experiences', exps);
+    state.experiences = exps;
+    renderExpList(); updateExpStats();
+    showToast('✓ 已存入经验库');
+  } catch(e) { showToast('存入失败：' + e.message); }
+}
+
+async function saveExpSummaryToDecision() {
+  const el = document.getElementById('exp-summary-text');
+  const text = el ? (el.innerText || el.textContent || '').trim() : '';
+  if (!text) { showToast('请先提炼方法论'); return; }
+  goto('decision');
+  await new Promise(r => setTimeout(r, 400));
+  const bgEl    = document.getElementById('dec-background');
+  const titleEl = document.getElementById('dec-title');
+  if (bgEl)    bgEl.value    = text.slice(0, 800);
+  if (titleEl) titleEl.value = '方法论总结 ' + todayStr();
+  showToast('✓ 已填入决策库，补充结论后保存');
+}
+
+function copyExpSummary() {
+  const el = document.getElementById('exp-summary-text');
+  const text = el ? (el.innerText || el.textContent || '').trim() : '';
+  if (!text) { showToast('请先提炼方法论'); return; }
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('✓ 已复制到剪贴板'))
+    .catch(() => showToast('复制失败，请手动选择'));
+}
+
 function renderExperiencePage(){renderExpList();updateExpStats();}
 
 // ─── 店铺配置 ────────────────────────────────
@@ -1719,6 +1882,7 @@ function loadConfig(){
 
 // ─── 初始化 ──────────────────────────────────
 async function init(){
+  if (!checkLogin()) return;
   updateTopDate();
   await detectMode();
   updateModeIndicator();
@@ -1746,7 +1910,7 @@ let competitorConfigs = [];
 
 async function loadCompetitorConfigs() {
   try {
-    const r = await fetch(SERVER_URL + '/competitor_config');
+    const r = await apiFetch('/competitor_config');
     competitorConfigs = await r.json() || [];
     renderCompConfigList();
     updateCompSelect();
@@ -1798,8 +1962,8 @@ async function removeCompetitorConfig(idx) {
 
 async function saveCompetitorConfigs() {
   try {
-    await fetch(SERVER_URL + '/competitor_config', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+    await apiFetch('/competitor_config', {
+      method: 'POST', headers: {},
       body: JSON.stringify(competitorConfigs)
     });
     renderCompConfigList();
@@ -1816,8 +1980,8 @@ async function runCompetitorAnalysis() {
   document.getElementById('competitor-result').style.display = 'block';
   document.getElementById('competitor-output').textContent = '正在搜索多维数据并分析，约需30-60秒...';
   try {
-    const r = await fetch(SERVER_URL + '/ai/competitor_single', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+    const r = await apiFetch('/ai/competitor_single', {
+      method: 'POST', headers: {},
       body: JSON.stringify({
         name: comp.name,
         link: comp.link || '',
@@ -1842,8 +2006,8 @@ async function runAllCompetitors() {
   showToast('开始分析全部' + competitorConfigs.length + '个竞品，请稍候...');
   for (const comp of competitorConfigs) {
     try {
-      await fetch(SERVER_URL + '/ai/competitor_single', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
+      await apiFetch('/ai/competitor_single', {
+        method: 'POST', headers: {},
         body: JSON.stringify({ name: comp.name, link: comp.link || '', category: comp.category || '' })
       });
     } catch(e) { console.log('分析失败：' + comp.name, e); }
@@ -1855,7 +2019,7 @@ async function runAllCompetitors() {
 
 async function loadCompHistory() {
   try {
-    const r = await fetch(SERVER_URL + '/competitor_log');
+    const r = await apiFetch('/competitor_log');
     const d = await r.json() || [];
     document.getElementById('comp-count-badge').textContent = d.length + ' 条';
 
@@ -1922,8 +2086,8 @@ async function compToDecision() {
   const fullConclusion = (conclusion + '\n\n' + actionPlan).substring(0, 800);
 
   try {
-    const r = await fetch(SERVER_URL + '/decision', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+    const r = await apiFetch('/decision', {
+      method: 'POST', headers: {},
       body: JSON.stringify({
         title: '竞品分析：' + compName + ' · ' + new Date().toLocaleDateString('zh-CN'),
         category: '竞品应对',
@@ -1947,51 +2111,96 @@ let intelExpanded = false;
 function toggleIntel() {
   intelExpanded = !intelExpanded;
   document.getElementById('intel-content').style.display = intelExpanded ? 'block' : 'none';
-  document.getElementById('intel-toggle-btn').textContent = intelExpanded ? '▲ 收起' : '▼ 展开';
-  if (intelExpanded) renderIntel();
+  document.querySelector('[onclick="toggleIntel()"]') && (
+    document.querySelector('[onclick="toggleIntel()"]').textContent = intelExpanded ? '收起 ▲' : '展开 ▼'
+  );
 }
 
 async function renderIntel() {
   const grid = document.getElementById('intel-grid');
   try {
-    const intel = await apiGet('intel_log');
+    const r = await apiFetch('/intel/today');
+    const intel = await r.json();
     if (!intel || !intel.date) {
       grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">暂无今日情报，将于每日08:00自动生成</div></div>';
       return;
     }
     document.getElementById('intel-date-badge').textContent = '· ' + intel.date;
+    window._intelData = intel;
+
     const sections = [
-      { key: 'global_news',  icon: '🌍', title: '全球动态' },
-      { key: 'ai_tech',      icon: '🤖', title: 'AI与科技' },
-      { key: 'finance',      icon: '💰', title: '财经供应链' },
-      { key: 'ecommerce',    icon: '🛒', title: '电商运营情报' },
-      { key: 'methodology',  icon: '📚', title: '跨平台方法论' },
-      { key: 'xiaohongshu',  icon: '🌸', title: '小红书趋势选品' },
+      { key: 'ecommerce', icon: '🛒', title: '电商运营情报' },
+      { key: 'global',    icon: '🌍', title: '全球动态' },
+      { key: 'ai',        icon: '🤖', title: 'AI与科技' },
+      { key: 'finance',   icon: '💰', title: '财经供应链' },
     ];
-    grid.innerHTML = sections.map(s => {
+
+    let intelHTML = sections.map(s => {
       const text = intel[s.key] || '';
       if (!text) return '';
-      return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px">
-        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px">${s.icon} ${s.title}</div>
-        <div style="font-size:11px;color:var(--text);line-height:1.7;white-space:pre-wrap;max-height:200px;overflow-y:auto">${text.substring(0,600)}${text.length>600?'...':''}</div>
+      return `<div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px;letter-spacing:1px">${s.icon} ${s.title}</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-wrap">${text}</div>
       </div>`;
     }).filter(Boolean).join('');
-    if (!grid.innerHTML) {
-      grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">今日情报尚未生成</div></div>';
+
+    // 来源链接
+    const sources = intel.sources || [];
+    if (sources.length) {
+      intelHTML += '<div style="padding:10px 0 4px;border-top:1px solid var(--border);margin-top:4px">';
+      intelHTML += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">📎 情报来源</div>';
+      intelHTML += sources.map(s =>
+        `<a href="${s.url||'#'}" target="_blank" rel="noopener"
+           style="display:inline-block;margin:2px 6px 2px 0;font-size:11px;color:var(--accent);
+                  text-decoration:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px">
+           ${s.title||s.url||'来源'}</a>`
+      ).join('');
+      intelHTML += '</div>';
     }
+
+    // 存入按钮
+    intelHTML += `<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="intelToDecision()">📌 存入决策库</button>
+      <button class="btn" onclick="intelToInsight()">◉ 存入洞察</button>
+    </div>`;
+
+    grid.innerHTML = intelHTML || '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">今日情报尚未生成</div></div>';
   } catch(e) {
     grid.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠</div><div class="empty-text">情报加载失败：' + e.message + '</div></div>';
   }
+}
+
+async function intelToDecision() {
+  if (!window._intelData) { showToast('暂无情报数据'); return; }
+  const d = window._intelData;
+  const summary = (d.ecommerce || d.summary || '').slice(0, 600);
+  goto('decision');
+  await new Promise(r => setTimeout(r, 400));
+  const titleEl = document.getElementById('dec-title');
+  const bgEl    = document.getElementById('dec-background');
+  if (titleEl) titleEl.value = '情报洞察 ' + todayStr();
+  if (bgEl)    bgEl.value    = summary;
+  showToast('✓ 已填入决策库，补充结论后保存');
+}
+
+async function intelToInsight() {
+  if (!window._intelData) { showToast('暂无情报数据'); return; }
+  goto('insight');
+  await new Promise(r => setTimeout(r, 400));
+  const el = document.getElementById('ins-market');
+  if (el) el.value = (window._intelData.ecommerce || '').slice(0, 400);
+  showToast('✓ 情报已填入市场观察');
 }
 
 // ─── 每日洞察 ────────────────────────────────
 async function submitInsight() {
   const btn = event.target; btn.textContent = '分析中...'; btn.disabled = true;
   try {
-    const r = await fetch(SERVER_URL + '/ai/insight', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+    const r = await apiFetch('/ai/insight', {
+      method: 'POST', headers: {},
       body: JSON.stringify({
         market: document.getElementById('ins-market').value,
+        methodology_context: window.TOP_ECOM_METHODOLOGY || '',
         idea: document.getElementById('ins-idea').value,
         friction: document.getElementById('ins-friction').value,
         mood: document.getElementById('ins-mood').value,
@@ -2018,7 +2227,7 @@ function clearInsight() {
 function copyInsight() { navigator.clipboard?.writeText(document.getElementById('insight-output').textContent).then(()=>showToast('已复制')); }
 async function loadInsightHistory() {
   try {
-    const r = await fetch(SERVER_URL + '/insight_log'); const d = await r.json();
+    const r = await apiFetch('/insight_log'); const d = await r.json();
     const container = document.getElementById('insight-history');
     if (!d || !d.length) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">◉</div><div class="empty-text">暂无历史记录</div></div>'; return; }
     container.innerHTML = d.slice(0,5).map((item,i) => `
@@ -2034,7 +2243,7 @@ async function loadGmvForecast() {
   const container = document.getElementById('gmv-forecast-display');
   container.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px">加载中...</div>';
   try {
-    const r = await fetch(SERVER_URL + '/ai/gmv-forecast'); const d = await r.json();
+    const r = await apiFetch('/ai/gmv-forecast'); const d = await r.json();
     if (d.error) throw new Error(d.error);
     const data = d.data || {};
     container.innerHTML = `
@@ -2054,8 +2263,8 @@ async function submitCompetitor() {
   if (!name) { showToast('请填写竞品名称'); return; }
   const btn = event.target; btn.textContent = '分析中...'; btn.disabled = true;
   try {
-    const r = await fetch(SERVER_URL + '/ai/competitor', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+    const r = await apiFetch('/ai/competitor', {
+      method: 'POST', headers: {},
       body: JSON.stringify({
         name, price: document.getElementById('comp-price').value,
         promo: document.getElementById('comp-promo').value,
@@ -2083,7 +2292,7 @@ function clearCompetitor() {
 function copyComp() { navigator.clipboard?.writeText(document.getElementById('competitor-output').textContent).then(()=>showToast('已复制')); }
 async function loadCompHistory() {
   try {
-    const r = await fetch(SERVER_URL + '/competitor_log'); const d = await r.json();
+    const r = await apiFetch('/competitor_log'); const d = await r.json();
     const container = document.getElementById('comp-history');
     document.getElementById('comp-count-badge').textContent = (d||[]).length + ' 条';
     if (!d||!d.length) { container.innerHTML='<div class="empty-state"><div class="empty-icon">⊛</div><div class="empty-text">暂无竞品记录</div></div>'; return; }
@@ -2123,66 +2332,30 @@ function previewVisionImages() {
 
 async function runVisionAnalysis() {
   if (!visionImages.length) { showToast('请先上传图片'); return; }
-  const btn = document.getElementById('vision-btn');
-  btn.textContent = '分析中...'; btn.disabled = true;
+  const btn   = document.getElementById('vision-btn');
+  const vtype = document.getElementById('vision-type') ? document.getElementById('vision-type').value : '主图';
+  const note  = document.getElementById('vision-note') ? document.getElementById('vision-note').value : '';
+  btn.textContent = '🔍 分析中...'; btn.disabled = true;
   document.getElementById('vision-result').style.display = 'block';
-  document.getElementById('vision-placeholder').style.display = 'none';
-  document.getElementById('vision-output').textContent = '正在调用Gemini Vision分析，约需10-20秒...';
-
-  const type = document.getElementById('vision-type').value;
-  const note = document.getElementById('vision-note').value;
-
-  // 读取店铺配置和人群画像
-  const vcfg = state?.config || {};
-  const audienceDesc = vcfg.audience || '25-35岁女性消费者';
-  const shopContext = [
-    vcfg.category ? '店铺类目：' + vcfg.category : '鞋服类目',
-    vcfg.skus ? '主推SKU：' + vcfg.skus : '',
-    vcfg.price ? '价格带：' + vcfg.price : '',
-    '目标人群画像：' + audienceDesc,
-  ].filter(Boolean).join('\n');
-
-  const typePrompts = {
-    '主图': '请从以下维度分析这张主图/封面图：\n① 视觉冲击力（1-10分）：在抖音信息流中的抢眼程度\n② 点击率预测：能否激发目标人群的点击欲望，原因是什么\n③ 卖点传达：产品核心卖点是否在3秒内清晰传达\n④ 文字/排版：文字信息量、字体大小、颜色对比是否适合移动端\n⑤ 人群匹配：图片风格与目标人群画像是否契合\n⑥ 可直接执行的优化方案（3条，精确到具体改法）',
-    '详情图': '请分析这组详情图的转化能力：\n① 转化逻辑：是否有清晰的"痛点引入→产品呈现→信任建立→行动引导"路径\n② 信息密度：每张图信息量是否合适，有无过载或空洞\n③ 视觉层次：重点信息是否突出，用户视线引导是否流畅\n④ 信任建设：材质/工艺/尺码/买家秀等信任元素是否充分\n⑤ 价值感：是否有效建立价格锚点和产品价值感\n⑥ 可直接执行的优化方案（3条，精确到具体改法）',
-    '竞品对比': '请从竞争分析角度解读这张竞品图片：\n① 竞品视觉策略：整体风格定位和目标人群判断\n② 核心卖点呈现：竞品主打什么差异化，传达是否有效\n③ 设计亮点：哪些值得借鉴的设计手法\n④ 竞品弱点：视觉上哪些地方做得不足，是我方机会点\n⑤ 差异化建议：我方如何在视觉上形成有效区隔',
-    '买家秀': '请分析这张买家秀/UGC内容：\n① 真实感与说服力（1-10分）：对潜在买家的说服效果\n② 使用场景：展示了哪些场景，覆盖了哪些目标人群\n③ 情感共鸣：内容能否引发购买欲望，关键触发点是什么\n④ 可复用元素：哪些视觉/文案元素可提炼到官方内容\n⑤ 引导策略：如何激励产出更多类似优质买家秀'
-  };
-
-  const prompt = `你是专注抖音鞋服类目的视觉营销专家，深度理解目标消费者的内容消费习惯和购买决策路径。
-
-=== 店铺信息 ===
-${shopContext}
-
-=== 分析任务 ===
-分析类型：${type}
-${note ? '补充说明：' + note : ''}
-
-${typePrompts[type]}
-
-严禁套话，所有建议必须基于图片实际内容，精确到可直接执行的动作。`;
-
-  const parts = [{text: prompt}];
-  for (const img of visionImages) {
-    const [header, data] = img.split(',');
-    const mimeType = header.match(/:(.*?);/)[1];
-    parts.push({inline_data: {mime_type: mimeType, data: data}});
-  }
-
+  document.getElementById('vision-placeholder') && (document.getElementById('vision-placeholder').style.display = 'none');
+  document.getElementById('vision-output').textContent = 'AI视觉分析中，请稍候（约15秒）...';
   try {
-    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_KEY}`, {
+    const images = visionImages.map(src => ({
+      data: src.split(',')[1] || src,
+      mime: src.startsWith('data:image/png') ? 'image/png' : 'image/jpeg'
+    }));
+    const res  = await apiFetch('/ai/vision', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({contents: [{parts}]})
+      body: JSON.stringify({ images, type: vtype, note })
     });
-    const d = await resp.json();
-    if (d.error) throw new Error(d.error.message);
-    const result = d.candidates?.[0]?.content?.parts?.[0]?.text || '分析失败';
-    document.getElementById('vision-output').textContent = result;
-    showToast('✓ 分析完成');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const out = document.getElementById('vision-output');
+    out.textContent = data.result || '分析完成';
+    const modeTag = data.mode === 'gemini' ? '🟢 Gemini Vision' : '🟡 文字分析模式（Gemini额度恢复后自动升级）';
+    showToast('✓ 分析完成 · ' + modeTag);
   } catch(e) {
-    document.getElementById('vision-output').textContent = '⚠ ' + e.message;
-    showToast('分析失败：' + e.message);
+    document.getElementById('vision-output').textContent = '分析失败：' + e.message;
   }
   btn.textContent = '🔍 开始分析'; btn.disabled = false;
 }
@@ -2192,20 +2365,23 @@ function copyVision() {
 }
 
 async function saveVisionToExp() {
-  const text = document.getElementById('vision-output').textContent;
-  const type = document.getElementById('vision-type').value;
-  if (!text || text.startsWith('⚠') || text.startsWith('正在')) { showToast('暂无有效分析内容'); return; }
+  const text = document.getElementById('vision-output').textContent || '';
+  const type = document.getElementById('vision-type') ? document.getElementById('vision-type').value : '视觉分析';
+  if (!text.trim() || text.startsWith('⚠') || text.includes('请稍候')) { showToast('暂无有效分析内容'); return; }
   try {
-    const exps = await apiGet('experiences') || [];
+    const exps = state.experiences || [];
     exps.unshift({
       id: Date.now(),
-      date: new Date().toLocaleDateString('zh-CN'),
+      date: todayStr(),
       category: '视觉优化',
-      title: type + '分析·' + new Date().toLocaleDateString('zh-CN'),
-      content: text.substring(0, 800),
-      tags: [type, '图片分析', 'Gemini']
+      outcome: 'positive',
+      title: type + '分析 ' + todayStr(),
+      detail: text.slice(0, 1000),
+      condition: '图片分析结果，可复用到同类主图优化'
     });
-    await apiPost('experiences', exps);
+    await dataSet('experiences', exps);
+    state.experiences = exps;
+    renderExpList(); updateExpStats();
     showToast('✓ 已存入经验库');
   } catch(e) { showToast('存入失败：' + e.message); }
 }
@@ -2216,8 +2392,8 @@ async function submitMaterial() {
   if (!title) { showToast('请填写素材标题'); return; }
   const btn = event.target; btn.textContent = '分析中...'; btn.disabled = true;
   try {
-    const r = await fetch(SERVER_URL + '/ai/material', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+    const r = await apiFetch('/ai/material', {
+      method: 'POST', headers: {},
       body: JSON.stringify({
         title, type: document.getElementById('mat-type').value,
         views: document.getElementById('mat-views').value,
@@ -2246,7 +2422,7 @@ function clearMaterial() {
 }
 async function loadMatList() {
   try {
-    const r = await fetch(SERVER_URL + '/material_log'); const d = await r.json();
+    const r = await apiFetch('/material_log'); const d = await r.json();
     document.getElementById('mat-count-badge').textContent = (d||[]).length + ' 条';
     document.getElementById('mat-total').textContent = (d||[]).length;
     if (d && d.length) {
@@ -2279,8 +2455,8 @@ async function saveDecision() {
   const optionsRaw = document.getElementById('dec-options').value.trim();
   const options = optionsRaw ? optionsRaw.split('\n').filter(o=>o.trim()) : [];
   try {
-    const r = await fetch(SERVER_URL + '/decision', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
+    const r = await apiFetch('/decision', {
+      method: 'POST', headers: {},
       body: JSON.stringify({
         title, conclusion,
         background: document.getElementById('dec-background').value,
@@ -2299,7 +2475,7 @@ function clearDecision() {
 }
 async function loadDecisions() {
   try {
-    const r = await fetch(SERVER_URL + '/decision');
+    const r = await apiFetch('/decision');
     decisionsCache = await r.json() || [];
     renderDecisionList(); updateDecisionStats();
   } catch(e) {}
@@ -2322,7 +2498,7 @@ function renderDecisionList() {
         <span class="exp-date">${d.date}</span>
       </div>
       <div class="exp-content">${d.conclusion}</div>
-      ${d.background ? `<div style="margin-top:6px"><span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="const el=document.getElementById('dec-bg-'+d.id);const s=el.style.display==='none';el.style.display=s?'block':'none';this.textContent=s?'▲ 收起分析':'▼ 展开背景分析'">▼ 展开背景分析</span><div id="dec-bg-${d.id}" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--muted);white-space:pre-wrap;line-height:1.7">${d.background}</div></div>` : ''}
+      ${d.background ? `<div style="margin-top:6px"><span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="toggleDecBg(d.id, this)">▼ 展开背景分析</span><div id="dec-bg-${d.id}" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--muted);white-space:pre-wrap;line-height:1.7">${d.background}</div><span onclick="showDecModal(d.id)" style="font-size:11px;color:var(--muted);cursor:pointer;margin-left:8px">全屏查看 ⤢</span></div>` : ''}
       ${d.options&&d.options.length ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${d.options.map((o,i)=>`<span class="badge ${d.chosen_option===o?'badge-green':'badge-blue'}" style="cursor:pointer" onclick="chooseOption(${d.id},'${o.replace(/'/g,"\'")}','${d.status}')">${o}</span>`).join('')}</div>` : ''}
       ${d.progress_notes&&d.progress_notes.length ? `<div class="exp-outcome">${d.progress_notes[d.progress_notes.length-1].date}：${d.progress_notes[d.progress_notes.length-1].note}</div>` : ''}
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
@@ -2339,7 +2515,7 @@ function updateDecisionStats() {
 }
 async function updateDecStatus(id, status) {
   try {
-    await fetch(SERVER_URL + '/decision/' + id, {
+    await apiFetch('/decision/' + id, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({status})
     });
@@ -2348,7 +2524,7 @@ async function updateDecStatus(id, status) {
 }
 async function chooseOption(id, option, currentStatus) {
   try {
-    await fetch(SERVER_URL + '/decision/' + id, {
+    await apiFetch('/decision/' + id, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({chosen_option: option, status: currentStatus==='待执行'?'进行中':currentStatus})
     });
@@ -2357,14 +2533,14 @@ async function chooseOption(id, option, currentStatus) {
 }
 async function deleteDecision(id) {
   try {
-    await fetch(SERVER_URL + '/decision/' + id + '/delete', {method:'POST'});
+    await apiFetch('/decision/' + id + '/delete', {method:'POST'});
     await loadDecisions(); showToast('已删除');
   } catch(e) { showToast('删除失败'); }
 }
 async function runDecisionReview() {
   const btn = event.target; btn.textContent = '复审中...'; btn.disabled = true;
   try {
-    const r = await fetch(SERVER_URL + '/ai/decision-review', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const r = await apiFetch('/ai/decision-review', {method:'POST', headers:{}, body:'{}'});
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     document.getElementById('decision-review-output').style.display = 'block';
@@ -2375,6 +2551,212 @@ async function runDecisionReview() {
 }
 
 init();
+
+// ─── 决策库辅助 ──────────────────────────────
+function toggleDecBg(id, el) {
+  const div = document.getElementById('dec-bg-' + id);
+  if (!div) return;
+  const hidden = div.style.display === 'none';
+  div.style.display = hidden ? 'block' : 'none';
+  el.textContent = hidden ? '▲ 收起分析' : '▼ 展开背景分析';
+}
+
+function showDecModal(id) {
+  const dec = (decisionsCache || []).find(d => d.id == id);
+  if (!dec) return;
+  const old = document.getElementById('dec-modal');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'dec-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:32px;max-width:720px;width:100%;max-height:82vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:700">${dec.title || '决策详情'}</div>
+        <button onclick="document.getElementById('dec-modal').remove()" style="background:transparent;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">✕</button>
+      </div>
+      ${dec.background ? `<div style="margin-bottom:18px"><div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">背景分析</div><div style="font-size:13px;line-height:1.85;color:var(--text2);white-space:pre-wrap">${dec.background}</div></div>` : ''}
+      ${dec.conclusion ? `<div style="margin-bottom:18px"><div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">决策结论</div><div style="font-size:13px;line-height:1.85;white-space:pre-wrap">${dec.conclusion}</div></div>` : ''}
+      ${dec.options && dec.options.length ? `<div><div style="font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">备选方案</div><div style="display:flex;gap:8px;flex-wrap:wrap">${dec.options.map(o=>`<span class="badge badge-blue">${o}</span>`).join('')}</div></div>` : ''}
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+// ─── 方法论存入 ──────────────────────────────
+async function saveExpSummaryToExp() {
+  const res = document.getElementById('exp-summary-result');
+  if (!res || !res.textContent.trim()) { showToast('请先提炼方法论'); return; }
+  try {
+    await apiFetch('/experiences', {
+      method: 'POST',
+      body: JSON.stringify({
+        category: '方法论', tag: 'system',
+        title: 'AI提炼方法论 ' + todayStr(),
+        content: res.textContent.trim(), date: todayStr()
+      })
+    });
+    await loadExperiences && loadExperiences();
+    showToast('✓ 已存入经验库');
+  } catch(e) { showToast('存入失败：' + e.message); }
+}
+
+async function saveExpSummaryToDecision() {
+  const res = document.getElementById('exp-summary-result');
+  if (!res || !res.textContent.trim()) { showToast('请先提炼方法论'); return; }
+  goto('decision');
+  await new Promise(r => setTimeout(r, 400));
+  const bgEl    = document.getElementById('dec-background');
+  const titleEl = document.getElementById('dec-title');
+  if (bgEl)    bgEl.value    = res.textContent.trim().slice(0, 800);
+  if (titleEl) titleEl.value = '方法论总结 ' + todayStr();
+  showToast('✓ 已填入决策库，补充结论后保存');
+}
+
+function copyExpSummary() {
+  const res = document.getElementById('exp-summary-result');
+  if (!res || !res.textContent.trim()) { showToast('请先提炼方法论'); return; }
+  navigator.clipboard.writeText(res.textContent.trim())
+    .then(() => showToast('✓ 已复制到剪贴板'))
+    .catch(() => showToast('复制失败，请手动选择文字'));
+}
+
+// ─── 头部电商方法论知识库（自动注入AI分析）─────
+window.TOP_ECOM_METHODOLOGY = `
+【头部抖音电商团队核心方法论】
+
+▌流量打法
+- 冷启动：小预算测素材（100-300元/条），跑出CTR>3%、CVR>8%再放量
+- 人群拓展：从精准人群包→相似人群→泛人群，ROI不低于阈值时逐步放开
+- 时间策略：19:00-23:00黄金时段加价10-20%，凌晨降预算保ROI
+- 素材迭代：单条素材生命周期3-7天，提前备好下一批，不等衰退才换
+
+▌内容策略（2024-2025头部打法）
+- 钩子公式：痛点场景(3秒) + 解决方案展示(10秒) + 信任背书(5秒) + 行动召唤(2秒)
+- 爆款结构：悬念开场 > 反差对比 > 痛点共鸣 > 产品出现 > 价格锚定 > 限时紧迫
+- 评论区运营：前10条评论人工干预，植入高频问题引导算法推送
+
+▌AI工具矩阵（2025主流）
+- 脚本生成：Claude/ChatGPT → 批量生产脚本变体
+- 图片优化：Midjourney/Flux → 主图A/B测试
+- 视频剪辑：即创AI → 自动生成投流素材
+- 数据分析：千管家 + 蝉妈妈 → 竞品监控
+- 客服自动化：飞鸽 + AI话术库
+
+▌选品方法论
+- 蓝海品：搜索量>5000、竞品<200、差评率>15%（改良空间大）
+- 季节预判：提前45-60天备货，踩准流量窗口
+- 价格带：避开9.9极低价（利润空间），主攻39-199区间
+
+▌千川投放SOP
+- 新计划：不限制定向，跑7天收集数据
+- 放量条件：ROI连续3天>阈值，CTR>行业均值
+- 暂停条件：消耗>200元且ROI<0.8，或CTR<1.5%
+- 复制策略：跑量计划复制3-5条微调定向，不动创意
+
+▌复盘节奏
+- 每日：对比昨日数据，找异动原因（±20%需记录）
+- 每周：TOP3归因 + 下周压注方向
+- 每月：ROI归因分析 + 素材效能排行 + 人群画像更新
+`;
+
+
+// ─── 工作流联动函数 ──────────────────────────
+
+async function insightToDecision() {
+  const text = document.getElementById('insight-output').textContent || '';
+  if (!text.trim()) { showToast('暂无洞察内容'); return; }
+  // 提取AI建议的📌决策
+  const lines = text.split('\n');
+  const decLine = lines.find(l => l.includes('📌') && l.includes('新增决策')) || '';
+  const titleMatch = decLine.match(/[【\[](.*?)[】\]]/) ;
+  const autoTitle = titleMatch ? titleMatch[1] : ('洞察驱动决策 ' + todayStr());
+  goto('decision');
+  await new Promise(r => setTimeout(r, 400));
+  const titleEl = document.getElementById('dec-title');
+  const bgEl    = document.getElementById('dec-background');
+  if (titleEl) titleEl.value = autoTitle;
+  if (bgEl)    bgEl.value   = text.slice(0, 800);
+  showToast('✓ 已填入决策库，补充结论后保存');
+}
+
+async function insightToExperience() {
+  const text = document.getElementById('insight-output').textContent || '';
+  if (!text.trim()) { showToast('暂无洞察内容'); return; }
+  try {
+    const exps = state.experiences || [];
+    exps.unshift({
+      id: Date.now(), date: todayStr(),
+      category: '每日洞察', outcome: 'positive',
+      title: '洞察沉淀 ' + todayStr(),
+      detail: text.slice(0, 1000),
+      condition: '当日运营信号与市场情报融合分析'
+    });
+    await dataSet('experiences', exps);
+    state.experiences = exps;
+    renderExpList(); updateExpStats();
+    showToast('✓ 已存入经验库');
+  } catch(e) { showToast('存入失败：' + e.message); }
+}
+
+async function compToExperience() {
+  const text = document.getElementById('competitor-output') ?
+    document.getElementById('competitor-output').textContent : '';
+  const name = document.getElementById('comp-select-name') ?
+    document.getElementById('comp-select-name').value : '竞品';
+  if (!text.trim()) { showToast('暂无竞品分析内容'); return; }
+  try {
+    const exps = state.experiences || [];
+    exps.unshift({
+      id: Date.now(), date: todayStr(),
+      category: '竞品研究', outcome: 'positive',
+      title: '竞品分析：' + name + ' ' + todayStr(),
+      detail: text.slice(0, 1000),
+      condition: '竞品追踪，定期更新'
+    });
+    await dataSet('experiences', exps);
+    state.experiences = exps;
+    renderExpList(); updateExpStats();
+    showToast('✓ 已存入经验库');
+  } catch(e) { showToast('存入失败：' + e.message); }
+}
+
+async function visionToDecision() {
+  const text = document.getElementById('vision-output') ?
+    document.getElementById('vision-output').textContent : '';
+  if (!text.trim() || text.includes('请稍候')) { showToast('暂无有效分析内容'); return; }
+  const type = document.getElementById('vision-type') ?
+    document.getElementById('vision-type').value : '视觉分析';
+  goto('decision');
+  await new Promise(r => setTimeout(r, 400));
+  const titleEl = document.getElementById('dec-title');
+  const bgEl    = document.getElementById('dec-background');
+  if (titleEl) titleEl.value = type + '优化决策 ' + todayStr();
+  if (bgEl)    bgEl.value   = text.slice(0, 800);
+  showToast('✓ 已填入决策库，补充结论后保存');
+}
+
+// 复盘结果存入经验库
+async function checkinToExperience() {
+  const text = document.getElementById('checkin-output') ?
+    document.getElementById('checkin-output').textContent : '';
+  if (!text.trim()) { showToast('暂无复盘内容'); return; }
+  try {
+    const exps = state.experiences || [];
+    exps.unshift({
+      id: Date.now(), date: todayStr(),
+      category: '每日复盘', outcome: 'positive',
+      title: '复盘沉淀 ' + todayStr(),
+      detail: text.slice(0, 1000),
+      condition: '每日打卡复盘，记录数据规律'
+    });
+    await dataSet('experiences', exps);
+    state.experiences = exps;
+    renderExpList(); updateExpStats();
+    showToast('✓ 已存入经验库');
+  } catch(e) { showToast('存入失败：' + e.message); }
+}
+
 </script>
 </body>
 </html>
