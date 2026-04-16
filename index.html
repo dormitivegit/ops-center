@@ -2294,8 +2294,9 @@ function toggleIntel() {
 async function renderIntel() {
   const grid = document.getElementById('intel-grid');
   try {
-    // 直接读intel_log数据，避免字段名转换问题
-    const intel = await dataGet('intel_log', {});
+    // 从后端专用接口读取，确保字段名正确
+    const r = await apiFetch('/intel/today');
+    const intel = await r.json();
     if (!intel || !intel.date) {
       grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">暂无今日情报，将于每日08:00自动生成</div></div>';
       return;
@@ -2948,46 +2949,76 @@ function extractDailyTasks(parsedText, monthStr) {
   const tasks = [];
   if (!parsedText || !monthStr) return tasks;
 
-  // 尝试匹配 YYYY-MM-DD 格式日期
-  const datePattern = /(\d{4}-\d{2}-\d{2})/g;
-  const lines = parsedText.split('\n');
-
-  // 匹配【第X周】段落，按周分配日期
-  const weekPattern = /【第([一二三四])周[^】]*】[（(]([^）)]+)[）)]/;
+  const [y, m] = monthStr.split('-').map(Number);
   const weekMap = { '一':0, '二':1, '三':2, '四':3 };
 
-  // 先尝试按周解析
-  let currentWeek = -1;
-  let weekStartDates = [];
-
-  // 计算每周起始日期
-  const [y, m] = monthStr.split('-').map(Number);
-  for (let w=0; w<4; w++) {
-    weekStartDates.push(new Date(y, m-1, 1 + w*7));
+  // 计算每周起始日期（每月1日所在周的周一）
+  const firstDay = new Date(y, m-1, 1);
+  const weekStarts = [];
+  for (let w=0; w<5; w++) {
+    weekStarts.push(new Date(y, m-1, 1 + w*7));
   }
 
-  lines.forEach(line => {
-    const wm = line.match(/【第([一二三四])周/);
-    if (wm) { currentWeek = weekMap[wm[1]] || 0; return; }
+  const lines = parsedText.split('\n');
+  let currentWeek = -1;
+  let dayOffset = 0; // 当前周内偏移天数
 
-    // 匹配任务行：- [P1/P2] 任务内容
-    const taskMatch = line.match(/^[- ]*\[(P[123])\]\s*(.+)/);
-    if (taskMatch && currentWeek >= 0) {
-      const priority = taskMatch[1];
-      const taskText = taskMatch[2].trim();
-      // 分配到该周的周一
-      const d = new Date(weekStartDates[currentWeek]);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      tasks.push({ date: dateStr, task: taskText, priority, done: false });
-      // 下一条任务推后一天
-      weekStartDates[currentWeek] = new Date(d.getTime() + 86400000);
+  lines.forEach(line => {
+    const trimmed = line.trim();
+
+    // 匹配周标题，支持多种格式：
+    // 【第一周核心任务（4.1-4.7）】
+    // 【第一周核心任务】
+    // 第一周
+    const wm = trimmed.match(/第([一二三四])周/);
+    if (wm) {
+      currentWeek = weekMap[wm[1]] !== undefined ? weekMap[wm[1]] : 0;
+      dayOffset = 0;
       return;
     }
 
-    // fallback: 直接匹配行内日期
-    const dm = line.match(/(\d{4}-\d{2}-\d{2})[：:]\s*(.+)/);
-    if (dm) {
-      tasks.push({ date: dm[1], task: dm[2].trim(), priority: 'P2', done: false });
+    // 匹配任务行，支持多种格式：
+    // - [P1] 任务内容
+    // - P1：任务内容
+    // - **P1**：任务内容
+    // - [P1/P2] 任务内容
+    if (currentWeek < 0) return;
+
+    let priority = 'P2';
+    let taskText = '';
+
+    // 格式1: - [P1] 任务
+    let tm = trimmed.match(/^[-*]\s*\[?(P[123])\]?\s*[：:]\s*(.+)/);
+    if (tm) { priority = tm[1]; taskText = tm[2]; }
+
+    // 格式2: P1：任务 或 **P1**：任务
+    if (!taskText) {
+      tm = trimmed.match(/\**(P[123])\**[：:]\s*(.+)/);
+      if (tm) { priority = tm[1]; taskText = tm[2]; }
+    }
+
+    // 格式3: - 任务内容（无优先级标注）
+    if (!taskText && trimmed.match(/^[-*]\s+\S/) && !trimmed.startsWith('【')) {
+      taskText = trimmed.replace(/^[-*]\s+/, '');
+      priority = 'P2';
+    }
+
+    if (taskText && taskText.length > 3) {
+      // 清理文本：去掉括号内的备注
+      taskText = taskText.replace(/（[^）]{0,20}）/g, '').trim();
+      taskText = taskText.replace(/\([^)]{0,20}\)/g, '').trim();
+      if (taskText.length < 3) return;
+
+      // 计算日期：每周起始日 + 天偏移
+      const baseDate = new Date(weekStarts[Math.min(currentWeek, 4)]);
+      baseDate.setDate(baseDate.getDate() + dayOffset);
+
+      // 不超过当月
+      if (baseDate.getMonth() === m-1) {
+        const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(baseDate.getDate()).padStart(2,'0')}`;
+        tasks.push({ date: dateStr, task: taskText.slice(0, 40), priority, done: false });
+        dayOffset = (dayOffset + 1) % 5; // 每周最多5个工作日
+      }
     }
   });
 
