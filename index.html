@@ -1242,7 +1242,7 @@ async function doLogin() {
   if (!token) { document.getElementById('login-err').textContent='请输入令牌'; return; }
   try {
     const res = await apiFetch('/login', {
-      method:'POST', headers:{},
+      method:'POST',
       body: JSON.stringify({token})
     });
     if (res.ok) {
@@ -1286,7 +1286,10 @@ async function detectMode() {
     MODE = 'local'; return;
   }
   try {
-    const r = await apiFetch('/health', { signal: AbortSignal.timeout(4000) });
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 4000);
+    const r = await apiFetch('/health', { signal: controller.signal });
+    clearTimeout(tid);
     MODE = r.ok ? 'cloud' : 'local';
   } catch { MODE = 'local'; }
 }
@@ -1338,7 +1341,7 @@ async function callAI(prompt, maxTokens) {
   if (!maxTokens) maxTokens = 1000;
   if (MODE === 'cloud') {
     const r = await apiFetch('/ai/raw', {
-      method:'POST', headers:{},
+      method:'POST',
       body:JSON.stringify({ prompt:prompt, max_tokens:maxTokens }),
       signal:AbortSignal.timeout(90000)
     });
@@ -2182,8 +2185,8 @@ function toggleIntel() {
 async function renderIntel() {
   const grid = document.getElementById('intel-grid');
   try {
-    const r = await apiFetch('/intel/today');
-    const intel = await r.json();
+    // 直接读intel_log数据，避免字段名转换问题
+    const intel = await dataGet('intel_log', {});
     if (!intel || !intel.date) {
       grid.innerHTML = '<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-text">暂无今日情报，将于每日08:00自动生成</div></div>';
       return;
@@ -2192,10 +2195,12 @@ async function renderIntel() {
     window._intelData = intel;
 
     const sections = [
-      { key: 'ecommerce', icon: '🛒', title: '电商运营情报' },
-      { key: 'global',    icon: '🌍', title: '全球动态' },
-      { key: 'ai',        icon: '🤖', title: 'AI与科技' },
-      { key: 'finance',   icon: '💰', title: '财经供应链' },
+      { key: 'ecommerce',    icon: '🛒', title: '电商运营情报' },
+      { key: 'global_news',  icon: '🌍', title: '全球动态' },
+      { key: 'ai_tech',      icon: '🤖', title: 'AI与科技' },
+      { key: 'finance',      icon: '💰', title: '财经供应链' },
+      { key: 'methodology',  icon: '📚', title: '跨平台方法论' },
+      { key: 'xiaohongshu',  icon: '🌸', title: '小红书趋势' },
     ];
 
     let intelHTML = sections.map(s => {
@@ -2603,7 +2608,7 @@ async function deleteDecision(id) {
 async function runDecisionReview() {
   const btn = event.target; btn.textContent = '复审中...'; btn.disabled = true;
   try {
-    const r = await apiFetch('/ai/decision-review', {method:'POST', headers:{}, body:'{}'});
+    const r = await apiFetch('/ai/decision-review', {method:'POST', body:'{}'});
     const d = await r.json();
     if (d.error) throw new Error(d.error);
     document.getElementById('decision-review-output').style.display = 'block';
