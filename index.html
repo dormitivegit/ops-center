@@ -1368,6 +1368,65 @@ async function apiAI(endpoint, body) {
   var totalN = tasks.length;
   var prompt = '';
 
+  // ── 云端模式：走各自专属后端接口（更高token限制+更精准prompt）──
+  if (MODE === 'cloud') {
+    if (endpoint === 'parse-plan') {
+      const r = await apiFetch('/ai/parse-plan', {
+        method:'POST',
+        body: JSON.stringify({
+          month: body.month||'', gmv: body.gmv||'', budget: body.budget||'',
+          roi: body.roi||'', pain: body.pain||'', events: body.events||'',
+          content: body.content||''
+        })
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      return d.result;
+    }
+    if (endpoint === 'checkin') {
+      const r = await apiFetch('/ai/checkin', {
+        method:'POST',
+        body: JSON.stringify({
+          gmv: body.gmv||'', roi: body.roi||'', spend: body.spend||'',
+          uv: body.uv||'', cvr: body.cvr||'',
+          uncompleted: body.uncompleted||'', blocker: body.blocker||'',
+          insight: body.insight||'', skus: body.skus||[], slow_sku: body.slow_sku||''
+        })
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      // 同步到本地state
+      const rpts = await dataGet('day_reports', []);
+      state.dayReports = rpts;
+      return d.result;
+    }
+    if (endpoint === 'week-report') {
+      const r = await apiFetch('/ai/week-report', { method:'POST', body: JSON.stringify({}) });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      state.weekReports = await dataGet('week_reports', []);
+      return d.result;
+    }
+    if (endpoint === 'month-report') {
+      const r = await apiFetch('/ai/month-report', { method:'POST', body: JSON.stringify({}) });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      state.monthReports = await dataGet('month_reports', []);
+      return d.result;
+    }
+    if (endpoint === 'exp-summary') {
+      const r = await apiFetch('/ai/exp-summary', {
+        method:'POST',
+        body: JSON.stringify({ experiences: body.experiences||'' })
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      // 更新config中的exp_summary
+      state.config = await dataGet('config', {});
+      return d.result;
+    }
+  }
+
   if (endpoint === 'parse-plan') {
     prompt = '你是资深电商运营顾问，请将以下月度工作计划解析并优化，生成结构化执行方案。\n\n'
       +'月份：'+(body.month||'本月')+' · GMV目标：¥'+(body.gmv||'--')+' · 千川预算：¥'+(body.budget||'--')+' · 目标ROI：'+(body.roi||'--')+'\n'
@@ -1431,7 +1490,11 @@ async function apiAI(endpoint, body) {
 
   } else { throw new Error('未知endpoint: '+endpoint); }
 
-  var result = await callAI(prompt);
+  var maxT = 1000;
+  if (endpoint === 'parse-plan') maxT = 4000;
+  else if (endpoint === 'checkin' || endpoint === 'month-report') maxT = 1500;
+  else if (endpoint === 'week-report') maxT = 1500;
+  var result = await callAI(prompt, maxT);
 
   if (MODE === 'local') {
     if (endpoint === 'checkin') {
