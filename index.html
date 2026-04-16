@@ -550,6 +550,19 @@
           <button class="btn btn-secondary" onclick="refreshTodayPlan()">↻ 刷新计划</button>
         </div>
       </div>
+      <!-- Top Action卡片 B1 -->
+      <div id="top-action-card" style="background:var(--bg2);border:1px solid var(--accent);border-radius:8px;padding:14px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">🧠 AI 今日最高指令</div>
+          <div id="top-action-text" style="font-size:14px;color:var(--text);font-weight:500;line-height:1.5">加载中...</div>
+          <div id="top-action-alerts" style="margin-top:6px;font-size:12px;color:var(--muted)"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+          <button class="btn btn-primary" style="font-size:12px;padding:5px 12px" onclick="triggerDecisionEngine(this)">⚡ 生成指令</button>
+          <button class="btn btn-secondary" style="font-size:12px;padding:5px 12px" onclick="triggerIntelTask(this)">📡 情报转任务</button>
+        </div>
+      </div>
+
       <div class="progress-ring" style="margin-bottom:16px">
         <div class="ring-wrap">
           <svg width="80" height="80" viewBox="0 0 80 80">
@@ -616,6 +629,13 @@
         <div><div class="page-title">17:20 数据打卡</div><div class="page-sub">填写今日核心数据，AI自动生成复盘报告</div></div>
         <span class="badge badge-yellow">每日 17:20</span>
       </div>
+      <!-- B3: 粘贴板极速录入 -->
+      <div class="card" style="margin-bottom:16px;border:1px dashed var(--accent)">
+        <div class="card-title">⚡ 极速录入 <span style="font-size:11px;color:var(--muted);font-weight:400">粘贴千川/罗盘数据，自动提取填入</span></div>
+        <textarea id="paste-area" placeholder="在此粘贴包含GMV、ROI、消耗的文本，系统自动识别填入..." style="width:100%;height:60px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:4px;font-size:13px;resize:vertical" oninput="parsePasteData(this.value)"></textarea>
+        <div id="paste-hint" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+      </div>
+
       <div class="grid2">
         <div class="card">
           <div class="card-title">今日核心数据</div>
@@ -1584,7 +1604,7 @@ function switchTab(id, el) {
 }
 
 // ─── 今日页面 ────────────────────────────────
-function refreshTodayPage() { refreshMonthProgress(); renderTodayTasks(); updateTaskProgress(); showIntelTip(); renderIntel(); }
+function refreshTodayPage() { refreshMonthProgress(); renderTodayTasks(); updateTaskProgress(); showIntelTip(); renderIntel(); checkShopState(); }
 function refreshTodayPlan() { renderTodayTasks(); showToast('今日计划已刷新'); }
 
 function refreshMonthProgress() {
@@ -1620,13 +1640,41 @@ function renderTodayTasks() {
   if (!state.tasks||state.tasks.length===0) {
     container.innerHTML='<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">暂无今日任务<br>请先上传月计划或手动添加任务</div></div>'; return;
   }
-  container.innerHTML = state.tasks.map((t,i)=>`
-    <div class="task-item ${t.done?'done':''}" id="task-${i}">
-      <div class="task-check ${t.done?'checked':''}" onclick="toggleTask(${i})">${t.done?'✓':''}</div>
-      <div class="task-text">${t.text}</div>
-      <span class="task-tag tag-${t.priority||'p2'}">${(t.priority||'P2').toUpperCase()}</span>
-    </div>`).join('');
+  // B2: 按score降序排列
+  const sorted = [...state.tasks].sort((a,b)=>(b.score||0)-(a.score||0));
+  const srcBadge = {
+    'decision_engine': '<span style="font-size:10px;background:#6366f1;color:#fff;padding:1px 5px;border-radius:3px;margin-right:4px">🤖AI决策</span>',
+    'intel_trigger':   '<span style="font-size:10px;background:#f59e0b;color:#fff;padding:1px 5px;border-radius:3px;margin-right:4px">⚡情报</span>',
+    'plan':            '<span style="font-size:10px;background:#3b82f6;color:#fff;padding:1px 5px;border-radius:3px;margin-right:4px">📅计划</span>',
+    'manual':          ''
+  };
+  container.innerHTML = sorted.map((t,i)=>{
+    const realIdx = state.tasks.indexOf(t);
+    const badge = srcBadge[t.source]||'';
+    const overdue = t.status==='overdue' ? '<span style="font-size:10px;color:#ef4444;margin-right:4px">[顺延]</span>' : '';
+    return `<div class="task-item ${t.done?'done':''}" id="task-si-${i}">
+      <div class="task-check ${t.done?'checked':''}" onclick="toggleTask(${realIdx})">${t.done?'✓':''}</div>
+      <div class="task-text">${overdue}${badge}${t.text}</div>
+      <span class="task-tag tag-${(t.priority||'P2').toLowerCase()}">${(t.priority||'P2').toUpperCase()}</span>
+    </div>`;
+  }).join('');
   updateTaskProgress();
+  // B2: 检查昨日未完成P1顺延提醒
+  checkOverdueP1();
+}
+
+function checkOverdueP1() {
+  const overdue = state.tasks.filter(t=>t.status==='overdue' && (t.priority==='P1'||t.priority==='p1') && !t.done);
+  if (overdue.length===0) return;
+  if (sessionStorage.getItem('overdue_alerted')) return;
+  sessionStorage.setItem('overdue_alerted','1');
+  const names = overdue.map(t=>t.text).join('\n• ');
+  if (confirm(`⚠️ 昨日有 ${overdue.length} 条P1任务未完成，是否顺延至今日？\n\n• ${names}`)) {
+    const today = todayStr();
+    overdue.forEach(t=>{ t.date=today; t.status='todo'; });
+    syncTasks();
+    showToast('已顺延至今日');
+  }
 }
 async function toggleTask(i) { state.tasks[i].done=!state.tasks[i].done; renderTodayTasks(); await syncTasks(); }
 function updateTaskProgress() {
@@ -3024,6 +3072,107 @@ function extractDailyTasks(parsedText, monthStr) {
 
   return tasks;
 }
+
+
+// ─────────────────────────────────────────────
+// Phase B: 新增功能函数
+// ─────────────────────────────────────────────
+
+// B1: 获取shop-state并渲染Top Action
+async function checkShopState() {
+  try {
+    const res = await apiFetch('/shop-state');
+    if (!res) return;
+    const topEl = document.getElementById('top-action-text');
+    const alertEl = document.getElementById('top-action-alerts');
+    const card = document.getElementById('top-action-card');
+    const modeBadge = document.getElementById('today-mode-badge');
+    const modeIndicator = document.getElementById('mode-indicator');
+    if (topEl) topEl.textContent = res.top_action || '点击"生成指令"让AI分析今日重点';
+    if (alertEl && res.alerts && res.alerts.length>0) {
+      alertEl.innerHTML = res.alerts.map(a=>`<span style="margin-right:8px">⚠ ${a}</span>`).join('');
+    }
+    if (res.state === 'emergency') {
+      if (card) card.style.borderColor = '#ef4444';
+      if (modeBadge) { modeBadge.textContent='🚨 应急模式'; modeBadge.className='badge badge-red'; }
+      if (modeIndicator) { modeIndicator.textContent='🚨 应急'; modeIndicator.className='badge badge-red'; }
+    } else if (res.state === 'opportunity') {
+      if (card) card.style.borderColor = '#10b981';
+      if (modeBadge) { modeBadge.textContent='🚀 机会模式'; modeBadge.className='badge badge-green'; }
+    } else {
+      if (modeBadge) { modeBadge.textContent='常规模式'; modeBadge.className='badge badge-green'; }
+    }
+  } catch(e) { console.warn('checkShopState', e); }
+}
+
+// B1: 触发决策引擎
+async function triggerDecisionEngine(btn) {
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.textContent='推演中...'; btn.disabled=true; }
+  try {
+    const res = await apiFetch('/ai/decision-engine', 'POST', {});
+    if (res && res.ok) {
+      showToast('🧠 决策引擎完成推演，AI任务已下发');
+      // 重新拉取任务和状态
+      const tasks = await apiFetch('/tasks');
+      if (tasks) { state.tasks = Array.isArray(tasks) ? tasks : []; }
+      await checkShopState();
+      renderTodayTasks();
+    } else {
+      showToast('决策引擎调用失败');
+    }
+  } catch(e) { showToast('网络错误: '+e.message); }
+  if (btn) { btn.textContent=orig; btn.disabled=false; }
+}
+
+// B5: 情报转任务
+async function triggerIntelTask(btn) {
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.textContent='扫描中...'; btn.disabled=true; }
+  try {
+    const res = await apiFetch('/ai/intel-trigger', 'POST', {});
+    if (res && res.ok) {
+      showToast(`📡 情报扫描完毕，新增 ${res.added||0} 条P1任务`);
+      const tasks = await apiFetch('/tasks');
+      if (tasks) { state.tasks = Array.isArray(tasks) ? tasks : []; }
+      renderTodayTasks();
+    } else {
+      showToast('情报触发失败');
+    }
+  } catch(e) { showToast('网络错误: '+e.message); }
+  if (btn) { btn.textContent=orig; btn.disabled=false; }
+}
+
+// B3: 粘贴板解析
+function parsePasteData(text) {
+  if (!text || text.length < 3) return;
+  const clean = n => parseFloat(String(n).replace(/,/g,''))||0;
+  const gmvM = text.match(/(GMV|成交额|销售额|支付金额|支付GMV)[^\d]*([\d,]+(\.\d+)?)/i);
+  const roiM = text.match(/(ROI|投产比|投产)[^\d]*([\d]+(\.\d+)?)/i);
+  const spendM = text.match(/(消耗|花费|成本|投放金额)[^\d]*([\d,]+(\.\d+)?)/i);
+  const uvM = text.match(/(UV|进店|访客)[^\d]*([\d,]+)/i);
+  const cvrM = text.match(/(转化率|CVR)[^\d]*([\d]+(\.\d+)?)/i);
+  let filled = [];
+  if (gmvM) { document.getElementById('ci-gmv').value=clean(gmvM[2]); filled.push('GMV'); }
+  if (roiM) { document.getElementById('ci-roi').value=clean(roiM[2]); filled.push('ROI'); }
+  if (spendM) { document.getElementById('ci-spend').value=clean(spendM[2]); filled.push('消耗'); }
+  if (uvM) { document.getElementById('ci-uv').value=clean(uvM[2]); filled.push('UV'); }
+  if (cvrM) { document.getElementById('ci-cvr').value=clean(cvrM[2]); filled.push('转化率'); }
+  const hint = document.getElementById('paste-hint');
+  if (hint) hint.textContent = filled.length>0 ? `✓ 已识别并填入：${filled.join('、')}` : '未识别到数据，请确认文本包含GMV/ROI/消耗等字段';
+}
+
+// B25: 决策库统计修复（页面加载后确保数据就绪再渲染）
+function safeDecisionCount() {
+  const el = document.querySelector('#page-decision .page-sub');
+  if (!el || !state.decisions) return;
+  el.textContent = `共 ${state.decisions.length} 条战略决策`;
+}
+
+// 页面就绪钩子
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(checkShopState, 1200);
+});
 
 </script>
 </body>
