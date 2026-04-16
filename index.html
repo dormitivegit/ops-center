@@ -1581,7 +1581,7 @@ function switchTab(id, el) {
 }
 
 // ─── 今日页面 ────────────────────────────────
-function refreshTodayPage() { refreshMonthProgress(); renderTodayTasks(); updateTaskProgress(); showIntelTip(); }
+function refreshTodayPage() { refreshMonthProgress(); renderTodayTasks(); updateTaskProgress(); showIntelTip(); renderIntel(); }
 function refreshTodayPlan() { renderTodayTasks(); showToast('今日计划已刷新'); }
 
 function refreshMonthProgress() {
@@ -1966,7 +1966,7 @@ async function init(){
     }
   },60000);
   if(MODE==='local'&&!DEEPSEEK_KEY) setTimeout(()=>showToast('本地模式：请填入 DEEPSEEK_KEY 启用AI'),1500);
-  if(MODE==='cloud') { loadInsightHistory(); loadCompHistory(); loadMatList(); loadDecisions(); loadGmvForecast(); loadCompetitorConfigs(); }
+  if(MODE==='cloud') { loadInsightHistory(); loadCompHistory(); loadMatList(); loadDecisions(); loadGmvForecast(); loadCompetitorConfigs(); renderIntel(); }
 }
 
 
