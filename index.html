@@ -2361,20 +2361,25 @@ async function renderIntel() {
     document.getElementById('intel-date-badge').textContent = '· ' + intel.date;
     window._intelData = intel;
 
+    // 只展示三项核心情报，每项独立入库按钮
     const sections = [
-      { key: 'ecommerce',    icon: '🛒', title: '电商运营情报' },
-      { key: 'global_news',  icon: '🌍', title: '全球动态' },
-      { key: 'ai_tech',      icon: '🤖', title: 'AI与科技' },
-      { key: 'finance',      icon: '💰', title: '财经供应链' },
-      { key: 'methodology',  icon: '📚', title: '跨平台方法论' },
-      { key: 'xiaohongshu',  icon: '🌸', title: '小红书趋势' },
+      { key: 'ecommerce',   icon: '🛒', title: '电商运营情报' },
+      { key: 'methodology', icon: '📚', title: '跨平台方法论' },
+      { key: 'xiaohongshu', icon: '🌸', title: '小红书趋势选品' },
     ];
 
     let intelHTML = sections.map(s => {
       const text = intel[s.key] || '';
       if (!text) return '';
+      const safeKey = s.key;
       return `<div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px;letter-spacing:1px">${s.icon} ${s.title}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px;font-weight:600;color:var(--accent);letter-spacing:1px">${s.icon} ${s.title}</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn" style="font-size:10px;padding:2px 8px" onclick="intelSectionToDecision('${safeKey}')">📌 决策库</button>
+            <button class="btn" style="font-size:10px;padding:2px 8px" onclick="intelSectionToExp('${safeKey}')">◆ 经验库</button>
+          </div>
+        </div>
         <div style="font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-wrap">${text}</div>
       </div>`;
     }).filter(Boolean).join('');
@@ -2383,19 +2388,13 @@ async function renderIntel() {
     const sources = intel.sources || [];
     if (sources.length) {
       intelHTML += '<div style="padding:10px 0 4px;border-top:1px solid var(--border);margin-top:4px">';
-      intelHTML += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">📎 情报来源</div>';
-      intelHTML += sources.map(s =>
-        `<a href="${s.url||'#'}" target="_blank" rel="noopener"
-           style="display:inline-block;margin:2px 6px 2px 0;font-size:11px;color:var(--accent);
-                  text-decoration:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px">
-           ${s.title||s.url||'来源'}</a>`
-      ).join('');
+      intelHTML += '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">📎 <a href="#" onclick="showAllSources();return false" style="color:var(--accent)">来源</a></div>';
       intelHTML += '</div>';
     }
 
-    // 存入按钮
+    // 全局存入按钮
     intelHTML += `<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="intelToDecision()">📌 存入决策库</button>
+      <button class="btn btn-primary" onclick="intelToDecision()">📌 全部存入决策库</button>
       <button class="btn" onclick="intelToInsight()">◉ 存入洞察</button>
     </div>`;
 
@@ -2797,6 +2796,17 @@ async function runDecisionReview() {
     if (d.error) throw new Error(d.error);
     document.getElementById('decision-review-output').style.display = 'block';
     document.getElementById('decision-review-text').textContent = d.result;
+    // 加存入按钮
+    let reviewBtnArea = document.getElementById('review-save-btns');
+    if (!reviewBtnArea) {
+      reviewBtnArea = document.createElement('div');
+      reviewBtnArea.id = 'review-save-btns';
+      reviewBtnArea.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+      document.getElementById('decision-review-output').appendChild(reviewBtnArea);
+    }
+    reviewBtnArea.innerHTML = `
+      <button class="btn btn-primary" onclick="saveReviewToDecision()">📌 存入决策库</button>
+      <button class="btn" onclick="saveReviewToExp()">◆ 存入经验库</button>`;
     showToast('决策复审完成');
   } catch(e) { showToast('复审失败：' + e.message); }
   btn.textContent = '⬡ 立即复审决策'; btn.disabled = false;
@@ -3193,6 +3203,72 @@ function safeDecisionCount() {
 function toggleTaskDetail(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// 情报单条存入决策库
+async function intelSectionToDecision(key) {
+  if (!window._intelData) { showToast('暂无情报数据'); return; }
+  const titles = {ecommerce:'电商运营情报', methodology:'跨平台方法论', xiaohongshu:'小红书趋势选品'};
+  const content = (window._intelData[key] || '').slice(0, 800);
+  if (!content) { showToast('该板块暂无内容'); return; }
+  goto('decision');
+  await new Promise(r => setTimeout(r, 400));
+  const titleEl = document.getElementById('dec-title');
+  const bgEl = document.getElementById('dec-background');
+  if (titleEl) titleEl.value = (titles[key]||key) + ' · ' + todayStr();
+  if (bgEl) bgEl.value = content;
+  showToast('✓ 已填入决策库，补充结论后保存');
+}
+
+// 情报单条存入经验库
+async function intelSectionToExp(key) {
+  if (!window._intelData) { showToast('暂无情报数据'); return; }
+  const titles = {ecommerce:'电商运营情报', methodology:'跨平台方法论', xiaohongshu:'小红书趋势选品'};
+  const content = (window._intelData[key] || '').slice(0, 800);
+  if (!content) { showToast('该板块暂无内容'); return; }
+  const r = await apiFetch('/experiences', 'POST', {
+    title: (titles[key]||key) + ' · ' + todayStr(),
+    category: '情报沉淀',
+    content: content,
+    tags: [key, '情报', todayStr()]
+  });
+  if (r && r.ok) { showToast('✓ 已存入经验库'); }
+  else { showToast('存入失败'); }
+}
+
+// 来源打包显示
+function showAllSources() {
+  if (!window._intelData || !window._intelData.sources) return;
+  const urls = window._intelData.sources.map(s => s.url||'').filter(Boolean);
+  if (!urls.length) { showToast('暂无来源链接'); return; }
+  urls.forEach(u => window.open(u, '_blank'));
+}
+
+// 决策复审存入决策库
+async function saveReviewToDecision() {
+  const text = document.getElementById('decision-review-text').textContent;
+  if (!text) { showToast('暂无复审内容'); return; }
+  goto('decision');
+  await new Promise(r => setTimeout(r, 400));
+  const titleEl = document.getElementById('dec-title');
+  const bgEl = document.getElementById('dec-background');
+  if (titleEl) titleEl.value = 'AI决策复审 · ' + todayStr();
+  if (bgEl) bgEl.value = text.slice(0, 800);
+  showToast('✓ 已填入决策库，补充结论后保存');
+}
+
+// 决策复审存入经验库
+async function saveReviewToExp() {
+  const text = document.getElementById('decision-review-text').textContent;
+  if (!text) { showToast('暂无复审内容'); return; }
+  const r = await apiFetch('/experiences', 'POST', {
+    title: 'AI决策复审 · ' + todayStr(),
+    category: 'AI复审',
+    content: text.slice(0, 800),
+    tags: ['决策复审', 'AI', todayStr()]
+  });
+  if (r && r.ok) { showToast('✓ 已存入经验库'); }
+  else { showToast('存入失败'); }
 }
 
 // 页面就绪钩子
