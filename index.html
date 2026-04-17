@@ -1031,6 +1031,7 @@
                 <button class="btn btn-secondary" onclick="copyComp()">复制</button>
                 <button class="btn btn-primary" onclick="compToDecision()">📌 存入决策库</button>
                 <button class="btn btn-secondary" onclick="compToExperience()">◆ 存入经验库</button>
+            <button class="btn btn-primary" onclick="compToDecision()">📌 存入决策库</button>
               </div>
             </div>
           </div>
@@ -1652,10 +1653,15 @@ function renderTodayTasks() {
     const realIdx = state.tasks.indexOf(t);
     const badge = srcBadge[t.source]||'';
     const overdue = t.status==='overdue' ? '<span style="font-size:10px;color:#ef4444;margin-right:4px">[顺延]</span>' : '';
-    return `<div class="task-item ${t.done?'done':''}" id="task-si-${i}">
-      <div class="task-check ${t.done?'checked':''}" onclick="toggleTask(${realIdx})">${t.done?'✓':''}</div>
-      <div class="task-text">${overdue}${badge}${t.text}</div>
-      <span class="task-tag tag-${(t.priority||'P2').toLowerCase()}">${(t.priority||'P2').toUpperCase()}</span>
+    const hasDetail = t.reason && t.reason.trim();
+    return `<div style="border:1px solid var(--border);border-radius:6px;margin-bottom:6px;overflow:hidden">
+      <div class="task-item ${t.done?'done':''}" id="task-si-${i}" style="border:none;margin:0">
+        <div class="task-check ${t.done?'checked':''}" onclick="toggleTask(${realIdx})">${t.done?'✓':''}</div>
+        <div class="task-text">${overdue}${badge}${t.text}</div>
+        <span class="task-tag tag-${(t.priority||'P2').toLowerCase()}">${(t.priority||'P2').toUpperCase()}</span>
+        ${hasDetail?`<span onclick="toggleTaskDetail('td-${i}')" style="cursor:pointer;font-size:11px;color:var(--muted);margin-left:4px;flex-shrink:0">▾详情</span>`:''}
+      </div>
+      ${hasDetail?`<div id="td-${i}" style="display:none;padding:8px 14px;font-size:12px;color:var(--text2);background:var(--bg3);border-top:1px solid var(--border);line-height:1.7">${t.reason}</div>`:''}
     </div>`;
   }).join('');
   updateTaskProgress();
@@ -1911,7 +1917,7 @@ function renderIntelLog() {
   const container=document.getElementById('intel-log');
   const intelArr = Array.isArray(state.intelLog) ? state.intelLog : (state.intelLog && state.intelLog.date ? [state.intelLog] : []);
   if (!intelArr||intelArr.length===0) { container.innerHTML='<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">暂无情报调整记录</div></div>'; return; }
-  container.innerHTML=intelArr.map(item=>`<div class="task-item"><span class="badge badge-purple" style="flex-shrink:0">${item.date}</span><div class="task-text" style="margin-left:8px">${item.suggestion}</div><span class="badge badge-yellow">${item.tag}</span></div>`).join('');
+  container.innerHTML=intelArr.map(item=>`<div class="task-item"><span class="badge badge-purple" style="flex-shrink:0">${item.date||''}</span><div class="task-text" style="margin-left:8px">${(item.ecommerce||item.summary||'暂无内容').slice(0,120)}...</div><span class="badge badge-yellow">${item.date===todayStr()?'今日':'历史'}</span></div>`).join('');
 }
 
 // ─── 日/周/月报 ──────────────────────────────
@@ -2133,8 +2139,10 @@ let competitorConfigs = [];
 
 async function loadCompetitorConfigs() {
   try {
-    const r = await apiFetch('/competitor_config');
-    competitorConfigs = await r.json() || [];
+    const r = await apiFetch('/competitors/config');
+    if (!r.ok) { competitorConfigs = []; return; }
+    const d = await r.json();
+    competitorConfigs = d.competitors || [];
     renderCompConfigList();
     updateCompSelect();
   } catch(e) { console.log('竞品配置加载失败', e); }
@@ -3120,12 +3128,13 @@ async function triggerDecisionEngine(btn) {
   const orig = btn ? btn.textContent : '';
   if (btn) { btn.textContent='推演中...'; btn.disabled=true; }
   try {
-    const res = await apiFetch('/ai/decision-engine', 'POST', {});
+    const r = await apiFetch('/ai/decision-engine', 'POST', {});
+    if (!r.ok) { showToast('决策引擎调用失败 '+r.status); return; }
+    const res = await r.json();
     if (res && res.ok) {
       showToast('🧠 决策引擎完成推演，AI任务已下发');
-      // 重新拉取任务和状态
-      const tasks = await apiFetch('/tasks');
-      if (tasks) { state.tasks = Array.isArray(tasks) ? tasks : []; }
+      const tr = await apiFetch('/tasks');
+      if (tr && tr.ok !== false) { const td = await tr.json(); state.tasks = Array.isArray(td) ? td : []; }
       await checkShopState();
       renderTodayTasks();
     } else {
@@ -3140,11 +3149,13 @@ async function triggerIntelTask(btn) {
   const orig = btn ? btn.textContent : '';
   if (btn) { btn.textContent='扫描中...'; btn.disabled=true; }
   try {
-    const res = await apiFetch('/ai/intel-trigger', 'POST', {});
-    if (res && res.ok) {
+    const r = await apiFetch('/ai/intel-trigger', 'POST', {});
+    if (!r.ok) { showToast('情报触发失败 '+r.status); return; }
+    const res = await r.json();
+    if (res && res.ok !== undefined) {
       showToast(`📡 情报扫描完毕，新增 ${res.added||0} 条P1任务`);
-      const tasks = await apiFetch('/tasks');
-      if (tasks) { state.tasks = Array.isArray(tasks) ? tasks : []; }
+      const tr = await apiFetch('/tasks');
+      if (tr && tr.ok !== false) { const td = await tr.json(); state.tasks = Array.isArray(td) ? td : []; }
       renderTodayTasks();
     } else {
       showToast('情报触发失败');
@@ -3177,6 +3188,11 @@ function safeDecisionCount() {
   const el = document.querySelector('#page-decision .page-sub');
   if (!el || !state.decisions) return;
   el.textContent = `共 ${state.decisions.length} 条战略决策`;
+}
+
+function toggleTaskDetail(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 // 页面就绪钩子
